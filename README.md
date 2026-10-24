@@ -107,7 +107,7 @@ Frontend: http://localhost:3000
   auditable, confidence-scored recommendations, routes uncertain/high-risk cases
   to a human review queue, and keeps AI output separate from final complaint
   data until a human approves or overrides. Admin inspection UI included.
-- **M4 — Semantic duplicate detection & clarification** *(current)*: pgvector
+- **M4 — Semantic duplicate detection & clarification**: pgvector
   embeddings for live complaints (configurable provider, model/version
   metadata); ranked possible-duplicate detection blending similarity, category,
   location evidence, and status — human-confirmed, never auto-merged; a
@@ -115,4 +115,10 @@ Frontend: http://localhost:3000
   persisted, resumable Q&A; resident clarification UI and staff duplicate
   review. Historical 311 data stays separate; no invented locations; no PII in
   suggestions.
-- M5 — Evaluation & polish (accuracy harness vs. 311 labels, hardening)
+- **M5 — Evaluation, security hardening & demo readiness** *(current)*: labeled
+  evaluation harness (classification/priority/routing accuracy, confidence
+  calibration, latency, cost) with real-provider support; staff authentication
+  (JWT + bcrypt) and role-based access control replacing the dev-only gate;
+  rate limiting, LLM timeouts/token caps/retries; safe embedding re-embedding
+  for dimension changes; reproducible end-to-end demo and provider-config
+  verification.

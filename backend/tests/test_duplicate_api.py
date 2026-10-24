@@ -82,13 +82,13 @@ async def test_duplicate_candidates_exclude_pii(
 async def test_duplicate_endpoints_blocked_in_prod(prod_client: AsyncClient) -> None:
     assert (
         await prod_client.post(f"{API}/duplicates/complaints/1/detect")
-    ).status_code == 403
+    ).status_code in (401, 403)
     assert (
         await prod_client.get(f"{API}/duplicates/complaints/1/candidates")
-    ).status_code == 403
+    ).status_code in (401, 403)
     assert (
         await prod_client.post(
             f"{API}/duplicates/links/1/decision",
             json={"decision": "confirm"},
         )
-    ).status_code == 403
+    ).status_code in (401, 403)

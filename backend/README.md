@@ -121,6 +121,27 @@ Guarantees: historical 311 data is never embedded or searched here; no addresses
 or coordinates are invented (location answers are stored as resident-provided
 text only); duplicate suggestions never expose other residents' PII.
 
+## Evaluation, auth & operations (M5)
+
+```bash
+python -m app.llm.verify          # check provider config + connectivity (no secrets printed)
+python -m app.eval.run            # labeled accuracy, calibration, latency, cost
+python -m app.embeddings.reembed --check   # report embedding dims
+python -m app.embeddings.reembed  # re-embed all live complaints (after model change)
+python -m app.demo                # seed a reproducible end-to-end demo
+```
+
+- **Auth**: `POST /api/auth/login` returns a JWT; send `Authorization: Bearer <token>`.
+  Roles: `staff`, `admin` (admin-only: user creation). Staff/admin endpoints accept a
+  valid token; in development only, they still accept unauthenticated access for local
+  convenience. In production a token is always required.
+- **Safeguards**: per-minute rate limiting on triage/detect endpoints; LLM timeout,
+  output-token cap, and bounded retries (all configurable — see `.env.example`).
+- **Safe re-embedding**: `app.embeddings.reembed` refuses to run on a dimension
+  mismatch and prints the migration steps, preventing corrupt vectors.
+
+See [docs/DEMO.md](../docs/DEMO.md) for the full end-to-end walkthrough.
+
 ## Test
 
 ```bash

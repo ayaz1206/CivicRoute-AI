@@ -18,9 +18,11 @@ from app.models.enums import (
     DuplicateDecision,
     RecommendationStatus,
     ReviewSeverity,
+    UserRole,
 )
 from app.models.historical_request import Historical311Request
 from app.models.status_history import StatusHistory
+from app.models.user import User
 
 __all__ = [
     "City",
@@ -34,6 +36,7 @@ __all__ = [
     "ComplaintEmbedding",
     "DuplicateLink",
     "Clarification",
+    "User",
     "ComplaintSource",
     "ComplaintStatus",
     "ComplaintPriority",
@@ -42,4 +45,5 @@ __all__ = [
     "ReviewSeverity",
     "DuplicateDecision",
     "ClarificationStatus",
+    "UserRole",
 ]

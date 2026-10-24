@@ -16,6 +16,7 @@ from app.api.deps import (
     get_duplicate_service,
     require_admin,
 )
+from app.core.ratelimit import rate_limit
 from app.db.session import get_session
 from app.models.complaint import Complaint
 from app.models.duplicate import DuplicateLink
@@ -64,6 +65,7 @@ async def _candidate_view(
     "/complaints/{complaint_id}/detect",
     response_model=list[DuplicateCandidate],
     summary="Run semantic duplicate detection for a complaint",
+    dependencies=[Depends(rate_limit)],
 )
 async def detect(
     complaint_id: int,

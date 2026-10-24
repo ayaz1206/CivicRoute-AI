@@ -71,6 +71,26 @@ async def seed() -> None:
         await session.commit()
         print(f"Departments created: {created} (skipped {len(existing)} existing)")
 
+        # Optionally bootstrap a staff admin from env (development convenience).
+        from app.core.config import get_settings
+        from app.models.enums import UserRole
+        from app.services.auth_service import AuthService
+
+        settings = get_settings()
+        if settings.bootstrap_admin_email and settings.bootstrap_admin_password:
+            auth = AuthService(session)
+            try:
+                user = await auth.create_user(
+                    city_id=boston.id,
+                    email=settings.bootstrap_admin_email,
+                    password=settings.bootstrap_admin_password,
+                    role=UserRole.ADMIN,
+                    full_name="Bootstrap Admin",
+                )
+                print(f"Created bootstrap admin: {user.email}")
+            except Exception as exc:  # noqa: BLE001
+                print(f"Bootstrap admin not created: {exc}")
+
 
 if __name__ == "__main__":
     asyncio.run(seed())

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { AuthLink } from "./AuthLink";
 
 export function NavBar() {
   return (
@@ -23,6 +24,7 @@ export function NavBar() {
           <Link href="/analytics" className="hover:underline">
             Analytics
           </Link>
+          <AuthLink />
         </div>
       </div>
     </nav>

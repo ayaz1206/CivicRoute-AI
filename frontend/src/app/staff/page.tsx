@@ -17,6 +17,14 @@ import {
 } from "@/lib/api";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Timeline } from "@/components/Timeline";
+import { ApiError } from "@/lib/api";
+
+function authHint(err: unknown): string {
+  if (err instanceof ApiError && err.status === 401) {
+    return "Please sign in as staff to use this page.";
+  }
+  return err instanceof Error ? err.message : "Request failed.";
+}
 
 const STATUSES: ComplaintStatus[] = [
   "submitted",
@@ -70,7 +78,7 @@ export default function StaffPage() {
       setComplaints(page.items);
       setTotal(page.total);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load complaints.");
+      setError(authHint(err));
     }
   }, [cityId, status]);
 

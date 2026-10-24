@@ -17,6 +17,7 @@ from app.api.deps import (
     get_review_service,
     require_admin,
 )
+from app.core.ratelimit import rate_limit
 from app.db.session import get_session
 from app.models.agent import AgentRun
 from app.schemas.agent import (
@@ -38,6 +39,7 @@ router = APIRouter(
     "/complaints/{complaint_id}/triage",
     response_model=AgentRunDetail,
     summary="Run AI triage for a complaint",
+    dependencies=[Depends(rate_limit)],
 )
 async def run_triage(
     complaint_id: int,

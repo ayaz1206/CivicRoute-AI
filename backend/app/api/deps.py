@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.auth_deps import get_current_user
 from app.core.config import Settings, get_settings
 from app.db.session import get_session
 from app.services.agent_service import AgentService
@@ -51,19 +52,27 @@ def get_clarification_service(
     return ClarificationService(session)
 
 
-def require_admin(settings: Settings = Depends(get_settings)) -> None:
-    """Guard staff/admin mutation and listing endpoints.
+def require_admin(
+    request: Request,
+    user=Depends(get_current_user),
+    settings: Settings = Depends(get_settings),
+) -> None:
+    """Guard staff/admin mutation and listing endpoints (M5).
 
-    Authentication does not exist yet (a later milestone). Until then these
-    endpoints are only served in development. In any non-development environment
-    they are disabled by default and return 403, so an unprotected deployment
-    cannot expose administrative operations or bulk resident data.
+    Accepts a valid staff/admin JWT. When no token is presented, falls back to
+    the development-only gate (``admin_endpoints_enabled``) so local demos and
+    the existing test suite keep working. In production, a valid token is always
+    required — the fallback is never permitted there.
     """
-    if not settings.admin_endpoints_enabled:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail=(
-                "Staff/admin endpoints are disabled in this environment until "
-                "authentication is implemented."
-            ),
-        )
+    if user is not None:
+        # Any authenticated staff/admin user may access these endpoints.
+        return None
+    if settings.admin_endpoints_enabled:
+        return None
+    raise HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail=(
+            "Authentication required. Staff/admin endpoints are disabled for "
+            "unauthenticated access in this environment."
+        ),
+    )

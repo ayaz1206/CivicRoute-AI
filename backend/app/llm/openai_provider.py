@@ -9,9 +9,9 @@ from __future__ import annotations
 import json
 from typing import Any
 
-import httpx
-
+from app.core.config import get_settings
 from app.llm.base import LLMError
+from app.llm.http import post_with_retries
 
 _API_URL = "https://api.openai.com/v1/chat/completions"
 
@@ -22,9 +22,12 @@ class OpenAIProvider:
     def __init__(self, api_key: str, model: str | None = None, timeout: float = 30.0):
         if not api_key:
             raise LLMError("OpenAI provider requires LLM_API_KEY")
+        settings = get_settings()
         self.api_key = api_key
         self.model = model or "gpt-4o-mini"
-        self.timeout = timeout
+        self.timeout = settings.llm_timeout_seconds or timeout
+        self.max_tokens = settings.llm_max_output_tokens
+        self.max_retries = settings.llm_max_retries
         # Populated after each call for cost/telemetry (never contains secrets).
         self.last_usage: dict[str, int] = {}
 
@@ -34,6 +37,7 @@ class OpenAIProvider:
         payload = {
             "model": self.model,
             "temperature": 0,
+            "max_tokens": self.max_tokens,
             "response_format": {"type": "json_object"},
             "messages": [
                 {"role": "system", "content": system},
@@ -45,14 +49,13 @@ class OpenAIProvider:
             ],
         }
         headers = {"Authorization": f"Bearer {self.api_key}"}
+        data = await post_with_retries(
+            _API_URL, payload, headers, self.timeout, self.max_retries
+        )
         try:
-            async with httpx.AsyncClient(timeout=self.timeout) as http:
-                resp = await http.post(_API_URL, json=payload, headers=headers)
-                resp.raise_for_status()
-                data = resp.json()
-                content = data["choices"][0]["message"]["content"]
-        except (httpx.HTTPError, KeyError, IndexError) as exc:
-            raise LLMError(f"OpenAI request failed: {exc}") from exc
+            content = data["choices"][0]["message"]["content"]
+        except (KeyError, IndexError) as exc:
+            raise LLMError(f"OpenAI response malformed: {exc}") from exc
 
         usage = data.get("usage") or {}
         self.last_usage = {

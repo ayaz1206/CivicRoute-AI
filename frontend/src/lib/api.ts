@@ -8,6 +8,26 @@ export const API_URL =
 
 const API = `${API_URL}/api`;
 
+// ---- Auth token storage (client-side) ----
+
+const TOKEN_KEY = "civicroute_token";
+
+export function getToken(): string | null {
+  if (typeof window === "undefined") return null;
+  return window.localStorage.getItem(TOKEN_KEY);
+}
+
+export function setToken(token: string | null): void {
+  if (typeof window === "undefined") return;
+  if (token) window.localStorage.setItem(TOKEN_KEY, token);
+  else window.localStorage.removeItem(TOKEN_KEY);
+}
+
+function authHeaders(): Record<string, string> {
+  const t = getToken();
+  return t ? { Authorization: `Bearer ${t}` } : {};
+}
+
 // ---- Types (mirror backend schemas) ----
 
 export type HealthStatus = { status: string; version?: string };
@@ -182,7 +202,10 @@ export async function listComplaints(params: {
   if (params.limit != null) q.set("limit", String(params.limit));
   if (params.offset != null) q.set("offset", String(params.offset));
   return json<Page<Complaint>>(
-    await fetch(`${API}/complaints?${q.toString()}`, { cache: "no-store" }),
+    await fetch(`${API}/complaints?${q.toString()}`, {
+      cache: "no-store",
+      headers: authHeaders(),
+    }),
   );
 }
 
@@ -194,10 +217,38 @@ export async function updateStatus(
   return json<ComplaintDetail>(
     await fetch(`${API}/complaints/${complaintId}/status`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...authHeaders() },
       body: JSON.stringify({ status, note }),
     }),
   );
+}
+
+// ---- Auth ----
+
+export type AuthUser = {
+  access_token: string;
+  role: "staff" | "admin";
+  user_id: number;
+  full_name: string | null;
+};
+
+export async function login(
+  email: string,
+  password: string,
+): Promise<AuthUser> {
+  const res = await json<AuthUser>(
+    await fetch(`${API}/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password }),
+    }),
+  );
+  setToken(res.access_token);
+  return res;
+}
+
+export function logout(): void {
+  setToken(null);
 }
 
 // ---- Analytics ----
@@ -288,6 +339,7 @@ export async function runTriage(complaintId: number): Promise<AgentRunDetail> {
   return json<AgentRunDetail>(
     await fetch(`${API}/agent/complaints/${complaintId}/triage`, {
       method: "POST",
+      headers: authHeaders(),
     }),
   );
 }
@@ -300,6 +352,7 @@ export async function getReviewQueue(
   return json<Page<Recommendation>>(
     await fetch(`${API}/agent/review-queue?${q.toString()}`, {
       cache: "no-store",
+      headers: authHeaders(),
     }),
   );
 }
@@ -320,7 +373,7 @@ export async function decideRecommendation(
   return json<Recommendation>(
     await fetch(`${API}/agent/recommendations/${recommendationId}/decision`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...authHeaders() },
       body: JSON.stringify(payload),
     }),
   );
@@ -346,6 +399,7 @@ export async function detectDuplicates(
   return json<DuplicateCandidate[]>(
     await fetch(`${API}/duplicates/complaints/${complaintId}/detect`, {
       method: "POST",
+      headers: authHeaders(),
     }),
   );
 }
@@ -356,6 +410,7 @@ export async function listDuplicateCandidates(
   return json<DuplicateCandidate[]>(
     await fetch(`${API}/duplicates/complaints/${complaintId}/candidates`, {
       cache: "no-store",
+      headers: authHeaders(),
     }),
   );
 }
@@ -368,7 +423,7 @@ export async function decideDuplicate(
   return json<DuplicateCandidate>(
     await fetch(`${API}/duplicates/links/${linkId}/decision`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...authHeaders() },
       body: JSON.stringify({ decision, reviewer: "staff", note }),
     }),
   );

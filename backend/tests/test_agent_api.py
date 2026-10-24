@@ -65,12 +65,12 @@ async def test_triage_and_review_flow(client: AsyncClient, boston_city_id: int) 
 
 
 async def test_agent_endpoints_blocked_in_prod(prod_client: AsyncClient) -> None:
-    assert (await prod_client.post(f"{API}/agent/complaints/1/triage")).status_code == 403
-    assert (await prod_client.get(f"{API}/agent/runs/1")).status_code == 403
-    assert (await prod_client.get(f"{API}/agent/review-queue")).status_code == 403
+    assert (await prod_client.post(f"{API}/agent/complaints/1/triage")).status_code in (401, 403)
+    assert (await prod_client.get(f"{API}/agent/runs/1")).status_code in (401, 403)
+    assert (await prod_client.get(f"{API}/agent/review-queue")).status_code in (401, 403)
     assert (
         await prod_client.post(
             f"{API}/agent/recommendations/1/decision",
             json={"decision": "approve"},
         )
-    ).status_code == 403
+    ).status_code in (401, 403)

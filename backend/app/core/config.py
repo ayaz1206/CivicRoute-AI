@@ -25,6 +25,15 @@ class Settings(BaseSettings):
     app_env: str = Field(default="development")
     api_prefix: str = Field(default="/api")
 
+    # --- Auth (M5) ---
+    # Secret for signing JWTs. MUST be overridden in production via env.
+    jwt_secret: str = Field(default="dev-insecure-change-me")
+    jwt_algorithm: str = Field(default="HS256")
+    jwt_expire_minutes: int = Field(default=720)
+    # Optional bootstrap admin created by `python -m app.seed` in development.
+    bootstrap_admin_email: str | None = Field(default=None)
+    bootstrap_admin_password: str | None = Field(default=None)
+
     # Gate for unauthenticated staff/admin mutation endpoints. Until real auth
     # lands (later milestone), these endpoints are only enabled in development.
     # Leave unset to derive from APP_ENV; set explicitly to override.
@@ -75,6 +84,14 @@ class Settings(BaseSettings):
     duplicate_similarity_threshold: float = Field(default=0.6)
     # Max distance (meters) for coordinates to count as location evidence.
     duplicate_location_radius_m: float = Field(default=200.0)
+
+    # --- LLM safeguards & rate limiting (M5) ---
+    llm_timeout_seconds: float = Field(default=20.0)
+    llm_max_output_tokens: int = Field(default=512)
+    llm_max_retries: int = Field(default=2)
+    # Simple in-process rate limit for expensive endpoints (per client/minute).
+    rate_limit_per_minute: int = Field(default=30)
+    rate_limit_enabled: bool = Field(default=True)
 
     @computed_field  # type: ignore[prop-decorator]
     @property

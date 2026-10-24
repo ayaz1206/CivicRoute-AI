@@ -35,24 +35,24 @@ async def prod_client() -> AsyncGenerator[AsyncClient, None]:
 
 async def test_admin_list_blocked_in_prod(prod_client: AsyncClient) -> None:
     resp = await prod_client.get(f"{API}/complaints", params={"city_id": 1})
-    assert resp.status_code == 403
+    assert resp.status_code in (401, 403)
 
 
 async def test_admin_status_update_blocked_in_prod(prod_client: AsyncClient) -> None:
     resp = await prod_client.post(f"{API}/complaints/1/status", json={"status": "triaged"})
-    assert resp.status_code == 403
+    assert resp.status_code in (401, 403)
 
 
 async def test_admin_assignment_blocked_in_prod(prod_client: AsyncClient) -> None:
     resp = await prod_client.patch(
         f"{API}/complaints/1/assignment", json={"category": "pothole"}
     )
-    assert resp.status_code == 403
+    assert resp.status_code in (401, 403)
 
 
 async def test_admin_detail_blocked_in_prod(prod_client: AsyncClient) -> None:
     resp = await prod_client.get(f"{API}/complaints/1")
-    assert resp.status_code == 403
+    assert resp.status_code in (401, 403)
 
 
 async def test_tracking_remains_public_in_prod(

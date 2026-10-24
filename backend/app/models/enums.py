@@ -106,3 +106,10 @@ class ClarificationStatus(str, enum.Enum):
     PENDING = "pending"
     ANSWERED = "answered"
     DISMISSED = "dismissed"
+
+
+class UserRole(str, enum.Enum):
+    """Staff access roles (M5). Residents are anonymous and have no account."""
+
+    STAFF = "staff"
+    ADMIN = "admin"

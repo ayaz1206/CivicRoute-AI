@@ -29,6 +29,17 @@ settings = get_settings()
 DATABASE_URL = settings.database_url
 
 
+def _include_object(obj, name, type_, reflected, compare_to):
+    """Exclude objects autogenerate cannot represent faithfully.
+
+    The pgvector HNSW index uses a custom opclass/options in a hand-edited
+    migration; skip it so autogenerate doesn't repeatedly try to drop it.
+    """
+    if type_ == "index" and name == "ix_complaint_embeddings_hnsw":
+        return False
+    return True
+
+
 def run_migrations_offline() -> None:
     """Run migrations in 'offline' mode (emit SQL without a DB connection)."""
     context.configure(
@@ -37,6 +48,7 @@ def run_migrations_offline() -> None:
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
         compare_type=True,
+        include_object=_include_object,
     )
     with context.begin_transaction():
         context.run_migrations()
@@ -47,6 +59,7 @@ def _do_run_migrations(connection) -> None:
         connection=connection,
         target_metadata=target_metadata,
         compare_type=True,
+        include_object=_include_object,
     )
     with context.begin_transaction():
         context.run_migrations()

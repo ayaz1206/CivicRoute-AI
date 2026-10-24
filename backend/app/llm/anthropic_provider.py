@@ -9,9 +9,9 @@ from __future__ import annotations
 import json
 from typing import Any
 
-import httpx
-
+from app.core.config import get_settings
 from app.llm.base import LLMError
+from app.llm.http import post_with_retries
 
 _API_URL = "https://api.anthropic.com/v1/messages"
 _VERSION = "2023-06-01"
@@ -23,9 +23,12 @@ class AnthropicProvider:
     def __init__(self, api_key: str, model: str | None = None, timeout: float = 30.0):
         if not api_key:
             raise LLMError("Anthropic provider requires LLM_API_KEY")
+        settings = get_settings()
         self.api_key = api_key
         self.model = model or "claude-3-5-haiku-latest"
-        self.timeout = timeout
+        self.timeout = settings.llm_timeout_seconds or timeout
+        self.max_tokens = settings.llm_max_output_tokens
+        self.max_retries = settings.llm_max_retries
         self.last_usage: dict[str, int] = {}
 
     async def complete_json(
@@ -33,7 +36,7 @@ class AnthropicProvider:
     ) -> dict[str, Any]:
         payload = {
             "model": self.model,
-            "max_tokens": 1024,
+            "max_tokens": self.max_tokens,
             "temperature": 0,
             "system": system
             + " Respond ONLY with a single JSON object, no prose.",
@@ -50,14 +53,13 @@ class AnthropicProvider:
             "anthropic-version": _VERSION,
             "content-type": "application/json",
         }
+        data = await post_with_retries(
+            _API_URL, payload, headers, self.timeout, self.max_retries
+        )
         try:
-            async with httpx.AsyncClient(timeout=self.timeout) as http:
-                resp = await http.post(_API_URL, json=payload, headers=headers)
-                resp.raise_for_status()
-                data = resp.json()
-                content = data["content"][0]["text"]
-        except (httpx.HTTPError, KeyError, IndexError) as exc:
-            raise LLMError(f"Anthropic request failed: {exc}") from exc
+            content = data["content"][0]["text"]
+        except (KeyError, IndexError) as exc:
+            raise LLMError(f"Anthropic response malformed: {exc}") from exc
 
         usage = data.get("usage") or {}
         in_tok = int(usage.get("input_tokens", 0))
