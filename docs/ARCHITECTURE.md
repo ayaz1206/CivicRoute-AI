@@ -56,6 +56,26 @@ reads or writes historical data through complaint endpoints — those only touch
 the idempotent ingestion job and is never mutated by the live workflow or
 auto-merged.
 
+### Boston 311 data quality & missing-value handling
+
+Field coverage was measured against a 2,000-record live sample of the source:
+
+- **Coordinates** (`latitude`/`longitude`): present in ~99% of records; no
+  `(0,0)` placeholders observed. The parser additionally nulls out-of-range
+  values and any `(0,0)` pair, so analytics never plots placeholder points.
+- **`open_dt`**: present in 100% of records → every row has an `opened_at`.
+- **`closed_dt`**: present in ~78% of records, matching exactly the share with
+  `case_status = Closed`. Open cases legitimately have no closure timestamp.
+
+Analytics handle missing values conservatively:
+
+- `avg_resolution_hours` is computed only over rows where **both** `opened_at`
+  and `closed_at` exist, so open cases never contribute a fabricated duration.
+- The daily `trend` excludes rows with a null `opened_at`.
+- Category/neighborhood/department/status breakdowns exclude null keys.
+
+No imputation is performed; missing values are excluded, not guessed.
+
 ### Security posture (pre-auth)
 
 Authentication is not implemented yet. Until it is:
@@ -63,8 +83,9 @@ Authentication is not implemented yet. Until it is:
 - Staff/admin **mutation and listing** endpoints (complaint list, detail with
   PII, status change, assignment) are gated by `require_admin` and are enabled
   only in development. In any non-development environment they return 403 by
-  default, so an unprotected deployment cannot expose administrative operations
-  or bulk resident data. The gate is overridable via `ALLOW_UNAUTHENTICATED_ADMIN`.
+  default. **In production, unauthenticated admin access is always disabled** —
+  the `ALLOW_UNAUTHENTICATED_ADMIN` override cannot enable it there, so a
+  misconfigured deployment cannot expose staff operations or bulk resident data.
 - The resident **tracking** endpoint is public and read-only, and returns a
   PII-free projection (`ComplaintPublic`) that omits reporter name/email.
 

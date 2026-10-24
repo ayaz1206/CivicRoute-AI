@@ -19,7 +19,7 @@ export default async function Home() {
         </span>
       </header>
 
-      <section className="grid gap-4 sm:grid-cols-3">
+      <section className="grid gap-4 sm:grid-cols-2">
         <Link
           href="/submit"
           className="rounded-lg border p-5 transition hover:border-blue-400"
@@ -40,6 +40,15 @@ export default async function Home() {
         >
           <h2 className="font-semibold">Staff dashboard</h2>
           <p className="mt-1 text-xs opacity-60">Review and manage complaints.</p>
+        </Link>
+        <Link
+          href="/analytics"
+          className="rounded-lg border p-5 transition hover:border-blue-400"
+        >
+          <h2 className="font-semibold">Boston 311 analytics</h2>
+          <p className="mt-1 text-xs opacity-60">
+            Historical trends by category, neighborhood & department.
+          </p>
         </Link>
       </section>
 

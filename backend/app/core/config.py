@@ -44,6 +44,19 @@ class Settings(BaseSettings):
         alias="CORS_ORIGINS",
     )
 
+    # --- Boston 311 ingestion (M2) ---
+    # CKAN datastore endpoint + the resource id for recent 311 data.
+    boston_311_base_url: str = Field(
+        default="https://data.boston.gov/api/3/action/datastore_search"
+    )
+    boston_311_resource_id: str = Field(
+        default="9d7c2214-4709-478a-a2e8-fb2020a5bb94"  # 311 Service Requests - 2025
+    )
+    # Default cap for how many recent records to ingest.
+    boston_311_max_records: int = Field(default=5000)
+    # Page size per API request (CKAN allows up to ~32000; keep modest).
+    boston_311_page_size: int = Field(default=1000)
+
     @computed_field  # type: ignore[prop-decorator]
     @property
     def cors_origins(self) -> list[str]:
@@ -55,12 +68,24 @@ class Settings(BaseSettings):
         return self.app_env == "development"
 
     @property
+    def is_production(self) -> bool:
+        return self.app_env.lower() in {"production", "prod"}
+
+    @property
     def admin_endpoints_enabled(self) -> bool:
         """Whether unauthenticated staff/admin mutations are permitted.
 
-        Defaults to development-only. Can be force-enabled/disabled via the
-        ALLOW_UNAUTHENTICATED_ADMIN env var (not recommended for production).
+        Hard rule: in production, unauthenticated admin access is ALWAYS
+        disabled — the ALLOW_UNAUTHENTICATED_ADMIN override cannot turn it on.
+        This prevents a misconfigured deployment from exposing staff operations
+        before real authentication exists.
+
+        Outside production, the override (if set) wins; otherwise access is
+        enabled only in development. Any non-development, non-production
+        environment (e.g. staging) defaults to disabled.
         """
+        if self.is_production:
+            return False
         if self.allow_unauthenticated_admin is not None:
             return self.allow_unauthenticated_admin
         return self.is_development

@@ -79,6 +79,18 @@ async def test_tracking_remains_public_in_prod(
 def test_settings_admin_gate_defaults() -> None:
     assert Settings(_env_file=None, app_env="development").admin_endpoints_enabled is True
     assert Settings(_env_file=None, app_env="production").admin_endpoints_enabled is False
-    # Explicit override wins over APP_ENV.
-    forced = Settings(_env_file=None, app_env="production", allow_unauthenticated_admin=True)
+    # Explicit override wins over APP_ENV outside production.
+    forced = Settings(_env_file=None, app_env="development", allow_unauthenticated_admin=True)
     assert forced.admin_endpoints_enabled is True
+
+
+def test_production_override_cannot_enable_admin() -> None:
+    """Hard rule: ALLOW_UNAUTHENTICATED_ADMIN=true must NOT enable admin in prod."""
+    for env in ("production", "Production", "prod"):
+        s = Settings(_env_file=None, app_env=env, allow_unauthenticated_admin=True)
+        assert s.admin_endpoints_enabled is False, f"{env} must stay disabled"
+
+
+def test_staging_defaults_disabled() -> None:
+    """A non-dev, non-prod environment (e.g. staging) is disabled by default."""
+    assert Settings(_env_file=None, app_env="staging").admin_endpoints_enabled is False

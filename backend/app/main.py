@@ -7,6 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from app import __version__
+from app.api.analytics import router as analytics_router
 from app.api.cities import router as cities_router
 from app.api.complaints import router as complaints_router
 from app.api.health import router as health_router
@@ -50,6 +51,7 @@ def create_app() -> FastAPI:
     # Versioned domain API.
     app.include_router(complaints_router, prefix=settings.api_prefix)
     app.include_router(cities_router, prefix=settings.api_prefix)
+    app.include_router(analytics_router, prefix=settings.api_prefix)
 
     return app
 

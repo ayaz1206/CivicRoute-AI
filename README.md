@@ -94,11 +94,14 @@ Frontend: http://localhost:3000
 
 - **M0 — Foundation**: monorepo, FastAPI + Next.js skeletons, Postgres+pgvector,
   Alembic, config, health checks, tests, docs.
-- **M1 — Core complaint management** *(current)*: complaint domain models
+- **M1 — Core complaint management**: complaint domain models
   (cities, departments, complaints, status history), complaint CRUD API with
   validated status transitions, resident submission + tracking pages, staff
   dashboard, and tests. Historical 311 data is kept separate from live complaints.
-- M2 — Agentic core (LangGraph)
-- M3 — Semantic intelligence + Boston 311 ingestion
-- M4 — Human review + admin analytics
+- **M2 — Boston 311 integration & analytics** *(current)*: idempotent,
+  validated ingestion of Boston 311 Open Data into a dedicated
+  `historical_311_requests` table, plus analytics APIs and dashboard
+  visualizations (categories, neighborhoods, departments, statuses, trends).
+- M3 — Semantic intelligence + duplicate detection
+- M4 — Agentic core (LangGraph)
 - M5 — Evaluation & polish

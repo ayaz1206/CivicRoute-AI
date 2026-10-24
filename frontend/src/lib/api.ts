@@ -199,3 +199,35 @@ export async function updateStatus(
     }),
   );
 }
+
+// ---- Analytics ----
+
+export type CountItem = { key: string; count: number };
+export type TrendPoint = { date: string; count: number };
+
+export type AnalyticsOverview = {
+  city: string;
+  summary: {
+    total: number;
+    open: number;
+    closed: number;
+    avg_resolution_hours: number | null;
+  };
+  by_category: CountItem[];
+  by_neighborhood: CountItem[];
+  by_department: CountItem[];
+  by_status: CountItem[];
+  trend: TrendPoint[];
+};
+
+export async function getAnalyticsOverview(
+  city = "boston",
+  trendDays = 30,
+): Promise<AnalyticsOverview> {
+  const q = new URLSearchParams({ city, trend_days: String(trendDays) });
+  return json<AnalyticsOverview>(
+    await fetch(`${API}/analytics/overview?${q.toString()}`, {
+      cache: "no-store",
+    }),
+  );
+}

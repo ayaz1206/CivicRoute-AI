@@ -47,12 +47,26 @@ tests/             # pytest suite
 | GET    | `/api/complaints/{id}`                 | Get a complaint with its timeline       |
 | POST   | `/api/complaints/{id}/status`          | Change status (staff)                   |
 | PATCH  | `/api/complaints/{id}/assignment`      | Set category/priority/department (staff)|
+| GET    | `/api/analytics/overview`              | Historical 311 analytics for a city     |
 
 ## Seed reference data
 
 ```bash
 python -m app.seed   # creates Boston + departments (no complaints, no 311 data)
 ```
+
+## Boston 311 ingestion (M2)
+
+Pulls recent Boston 311 records from the CKAN Open Data API into the dedicated
+`historical_311_requests` table. Validated and idempotent (upsert on
+`case_enquiry_id`); safe to re-run.
+
+```bash
+python -m app.ingestion.cli --max 5000   # default max is 5000
+```
+
+Configuration (see `.env.example`): `BOSTON_311_RESOURCE_ID`,
+`BOSTON_311_MAX_RECORDS`, `BOSTON_311_PAGE_SIZE`.
 
 ## Test
 

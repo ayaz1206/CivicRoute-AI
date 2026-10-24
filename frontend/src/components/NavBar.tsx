@@ -17,6 +17,9 @@ export function NavBar() {
           <Link href="/staff" className="hover:underline">
             Staff
           </Link>
+          <Link href="/analytics" className="hover:underline">
+            Analytics
+          </Link>
         </div>
       </div>
     </nav>
