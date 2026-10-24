@@ -65,6 +65,12 @@ export default function StaffPage() {
   const [departments, setDepartments] = useState<Department[]>([]);
   const [pendingRec, setPendingRec] = useState<Recommendation | null>(null);
   const [duplicates, setDuplicates] = useState<DuplicateCandidate[]>([]);
+  // Duplicate-detection lifecycle so we can distinguish "not run yet" from
+  // "ran and found nothing": idle | loading | done | error.
+  const [dupState, setDupState] = useState<"idle" | "loading" | "done" | "error">(
+    "idle",
+  );
+  const [dupError, setDupError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -108,6 +114,8 @@ export default function StaffPage() {
     if (!found) return;
     setSelectedId(id);
     setDuplicates([]);
+    setDupState("idle");
+    setDupError(null);
     setDetail(null);
     setPendingRec(null);
     try {
@@ -183,11 +191,17 @@ export default function StaffPage() {
   async function detectDup() {
     if (selectedId == null) return;
     setBusy(true);
-    setError(null);
+    setDupState("loading");
+    setDupError(null);
     try {
-      setDuplicates(await detectDuplicates(selectedId));
+      const found = await detectDuplicates(selectedId);
+      setDuplicates(found);
+      setDupState("done");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Duplicate detection failed.");
+      setDupError(
+        err instanceof Error ? err.message : "Duplicate detection failed.",
+      );
+      setDupState("error");
     } finally {
       setBusy(false);
     }
@@ -376,7 +390,7 @@ export default function StaffPage() {
                   onClick={detectDup}
                   className="ml-2 rounded bg-teal-600 px-3 py-1.5 text-sm text-white hover:bg-teal-700 disabled:opacity-50"
                 >
-                  Find duplicates
+                  {dupState === "loading" ? "Searching…" : "Find duplicates"}
                 </button>
                 <p className="mt-1 text-xs opacity-50">
                   AI recommendations and duplicate links never change the
@@ -384,7 +398,35 @@ export default function StaffPage() {
                 </p>
               </div>
 
-              {duplicates.length > 0 && (
+              {dupState === "loading" && (
+                <div className="rounded border p-3 text-sm opacity-70">
+                  Searching for duplicates…
+                </div>
+              )}
+
+              {dupState === "error" && (
+                <div className="rounded border border-red-300 bg-red-50 p-3 text-sm text-red-800">
+                  <p>{dupError ?? "Duplicate detection failed."}</p>
+                  <button
+                    disabled={busy}
+                    onClick={detectDup}
+                    className="mt-2 rounded border border-red-400 px-2 py-1 text-xs text-red-800 hover:bg-red-100 disabled:opacity-50"
+                  >
+                    Retry
+                  </button>
+                </div>
+              )}
+
+              {dupState === "done" && duplicates.length === 0 && (
+                <div className="rounded border border-green-300 bg-green-50 p-3 text-sm text-green-800">
+                  <p className="font-medium">No potential duplicates found</p>
+                  <p className="mt-1 text-xs">
+                    No existing complaints met the duplicate detection threshold.
+                  </p>
+                </div>
+              )}
+
+              {dupState === "done" && duplicates.length > 0 && (
                 <div className="rounded border p-3">
                   <h3 className="mb-2 text-sm font-medium">
                     Possible duplicates (human-confirmed, never auto-merged)
