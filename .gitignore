@@ -33,3 +33,4 @@ yarn-error.log*
 
 # ---- Docker / data ----
 infra/pgdata/
+infra/backups/

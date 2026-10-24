@@ -2,18 +2,33 @@
 
 from __future__ import annotations
 
+import os
 from collections.abc import AsyncGenerator
 
 import pytest
-from httpx import ASGITransport, AsyncClient
-from sqlalchemy import delete, select
 
-from app.db.session import async_session_factory, engine
-from app.main import create_app
-from app.models.city import City
-from app.models.complaint import Complaint
-from app.models.department import Department
-from app.models.status_history import StatusHistory
+# Force hermetic, offline providers for the whole test suite BEFORE settings is
+# first constructed. Tests must never depend on real API credentials or the
+# developer's local .env (which may point at OpenAI). The fake providers are
+# deterministic; the embedding dim is set to 1536 to match the migrated DB
+# column (vector(1536)).
+os.environ["LLM_PROVIDER"] = "fake"
+os.environ["EMBEDDING_PROVIDER"] = "fake"
+os.environ["EMBEDDING_DIM"] = "1536"
+
+from httpx import ASGITransport, AsyncClient  # noqa: E402
+from sqlalchemy import delete, select  # noqa: E402
+
+from app.core.config import get_settings  # noqa: E402
+from app.db.session import async_session_factory, engine  # noqa: E402
+from app.main import create_app  # noqa: E402
+from app.models.city import City  # noqa: E402
+from app.models.complaint import Complaint  # noqa: E402
+from app.models.department import Department  # noqa: E402
+from app.models.status_history import StatusHistory  # noqa: E402
+
+# Ensure the cached Settings picks up the overrides above.
+get_settings.cache_clear()
 
 
 @pytest.fixture(autouse=True)

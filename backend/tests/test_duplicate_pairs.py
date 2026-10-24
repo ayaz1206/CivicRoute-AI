@@ -3,15 +3,29 @@
 Verifies the detector ranks genuine duplicate pairs above the similarity
 threshold and keeps clearly-unrelated pairs below it, using the configured
 (default fake) embedder.
+
+The fake hash embedder has a lower similarity scale than real sentence
+embeddings, so these tests pin a fake-appropriate threshold via settings
+override. The production default (calibrated for OpenAI) is validated separately
+by `app.eval.dup_eval`.
 """
 
 from __future__ import annotations
 
 import pytest
 
+from app.core.config import get_settings
 from app.db.session import async_session_factory
 from app.models.complaint import Complaint
 from app.services.duplicate_service import DuplicateService
+
+
+@pytest.fixture(autouse=True)
+def _fake_threshold(monkeypatch):
+    """Pin a threshold suited to the deterministic fake embedder."""
+    settings = get_settings()
+    monkeypatch.setattr(settings, "duplicate_similarity_threshold", 0.3)
+    yield
 
 # (title_a, desc_a, title_b, desc_b, expected_duplicate)
 PAIRS = [

@@ -81,7 +81,10 @@ class Settings(BaseSettings):
     # Vector dimension. Must match the DB column (see migration). 384 for fake.
     embedding_dim: int = Field(default=384)
     # Cosine-similarity floor for a complaint to be a duplicate candidate (0..1).
-    duplicate_similarity_threshold: float = Field(default=0.6)
+    # Calibrated for OpenAI text-embedding-3-small: measured positives 0.85-0.92
+    # vs. unrelated 0.63-0.71, so 0.78 sits in the clean gap. Lower this only for
+    # embedders whose unrelated-pair similarities are much closer to zero.
+    duplicate_similarity_threshold: float = Field(default=0.78)
     # Max distance (meters) for coordinates to count as location evidence.
     duplicate_location_radius_m: float = Field(default=200.0)
 

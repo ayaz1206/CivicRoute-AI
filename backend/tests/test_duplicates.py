@@ -5,6 +5,7 @@ from __future__ import annotations
 import pytest
 from sqlalchemy import select
 
+from app.core.config import get_settings
 from app.db.session import async_session_factory
 from app.embeddings.base import EmbeddingError
 from app.models.complaint import Complaint
@@ -12,6 +13,16 @@ from app.models.duplicate import ComplaintEmbedding
 from app.models.enums import DuplicateDecision
 from app.services.duplicate_service import DuplicateService
 from app.services.errors import NotFoundError
+
+
+@pytest.fixture(autouse=True)
+def _fake_threshold(monkeypatch):
+    """The deterministic fake embedder has a lower similarity scale than real
+    sentence embeddings; pin a fake-appropriate threshold so ranking/filtering
+    logic is tested independently of the OpenAI-calibrated production default."""
+    settings = get_settings()
+    monkeypatch.setattr(settings, "duplicate_similarity_threshold", 0.3)
+    yield
 
 
 async def _embed_all(cids: list[int]) -> None:
@@ -32,10 +43,12 @@ async def test_embedding_persisted_with_metadata(make_complaint) -> None:
         emb = await session.scalar(
             select(ComplaintEmbedding).where(ComplaintEmbedding.complaint_id == cid)
         )
-    # Submission auto-embeds (best-effort) with the fake provider.
+    # Submission auto-embeds (best-effort) with the configured provider. The
+    # test suite forces the deterministic fake provider at 1536 dims (matching
+    # the migrated DB column).
     assert emb is not None
     assert emb.provider == "fake"
-    assert emb.dim == 384
+    assert emb.dim == 1536
     assert emb.model
 
 
