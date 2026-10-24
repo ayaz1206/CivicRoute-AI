@@ -4,16 +4,22 @@ import { useCallback, useEffect, useState } from "react";
 import {
   detectDuplicates,
   decideDuplicate,
+  getComplaintDetail,
+  getReviewQueue,
   listCities,
   listComplaints,
+  listDepartments,
   runTriage,
   trackComplaint,
   updateStatus,
   type City,
   type Complaint,
+  type ComplaintDetail,
   type ComplaintPublic,
   type ComplaintStatus,
+  type Department,
   type DuplicateCandidate,
+  type Recommendation,
 } from "@/lib/api";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Timeline } from "@/components/Timeline";
@@ -55,6 +61,9 @@ export default function StaffPage() {
   const [error, setError] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [selected, setSelected] = useState<ComplaintPublic | null>(null);
+  const [detail, setDetail] = useState<ComplaintDetail | null>(null);
+  const [departments, setDepartments] = useState<Department[]>([]);
+  const [pendingRec, setPendingRec] = useState<Recommendation | null>(null);
   const [duplicates, setDuplicates] = useState<DuplicateCandidate[]>([]);
   const [busy, setBusy] = useState(false);
 
@@ -66,6 +75,14 @@ export default function StaffPage() {
       })
       .catch(() => setError("Could not load cities. Is the backend running?"));
   }, []);
+
+  // Load the selected city's departments so department_id can be shown by name.
+  useEffect(() => {
+    if (cityId === "") return;
+    listDepartments(cityId)
+      .then(setDepartments)
+      .catch(() => setDepartments([]));
+  }, [cityId]);
 
   const refresh = useCallback(async () => {
     setError(null);
@@ -88,15 +105,38 @@ export default function StaffPage() {
 
   async function openDetail(id: number) {
     const found = complaints.find((c) => c.id === id);
-    if (found) {
+    if (!found) return;
+    setSelectedId(id);
+    setDuplicates([]);
+    setDetail(null);
+    setPendingRec(null);
+    try {
+      setSelected(await trackComplaint(found.tracking_code));
+      // Staff-only full detail (category/priority/department_id) + any pending
+      // AI recommendation awaiting approval for this complaint.
       try {
-        setSelectedId(id);
-        setDuplicates([]);
-        setSelected(await trackComplaint(found.tracking_code));
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to load detail.");
+        setDetail(await getComplaintDetail(id));
+      } catch {
+        /* detail is best-effort; panel still shows tracking info */
       }
+      try {
+        const queue = await getReviewQueue(cityId === "" ? undefined : cityId);
+        setPendingRec(
+          queue.items.find(
+            (r) => r.complaint_id === id && r.status === "pending",
+          ) ?? null,
+        );
+      } catch {
+        /* review queue is best-effort */
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load detail.");
     }
+  }
+
+  function departmentName(deptId: number | null | undefined): string | null {
+    if (deptId == null) return null;
+    return departments.find((d) => d.id === deptId)?.name ?? `#${deptId}`;
   }
 
   async function changeStatus(next: ComplaintStatus) {
@@ -107,6 +147,11 @@ export default function StaffPage() {
       const updated = await updateStatus(selectedId, next);
       // Re-use the PII-free public projection for display consistency.
       setSelected(updated);
+      try {
+        setDetail(await getComplaintDetail(selectedId));
+      } catch {
+        /* best-effort */
+      }
       await refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Status update failed.");
@@ -268,6 +313,56 @@ export default function StaffPage() {
               </div>
               <p className="text-sm opacity-80">{selected.description}</p>
 
+              {/* Approved / assigned complaint fields (source of truth). */}
+              <div className="rounded border p-3">
+                <h3 className="mb-2 text-xs font-medium uppercase opacity-60">
+                  Assigned details
+                </h3>
+                <dl className="grid grid-cols-3 gap-3 text-sm">
+                  <Field
+                    label="Category"
+                    value={detail?.category ?? selected.category}
+                  />
+                  <Field
+                    label="Priority"
+                    value={detail?.priority ?? selected.priority}
+                  />
+                  <Field
+                    label="Department"
+                    value={departmentName(detail?.department_id)}
+                  />
+                </dl>
+                <p className="mt-2 text-xs opacity-50">
+                  Set when staff approve or override an AI recommendation, or
+                  assign manually.
+                </p>
+              </div>
+
+              {/* Pending AI recommendation — clearly distinct from the above. */}
+              {pendingRec && (
+                <div className="rounded border border-amber-300 bg-amber-50 p-3 text-amber-900">
+                  <h3 className="mb-2 text-xs font-medium uppercase">
+                    AI recommendation — pending approval
+                  </h3>
+                  <dl className="grid grid-cols-3 gap-3 text-sm">
+                    <Field label="Category" value={pendingRec.category} dark />
+                    <Field label="Priority" value={pendingRec.priority} dark />
+                    <Field
+                      label="Department"
+                      value={pendingRec.department_slug}
+                      dark
+                    />
+                  </dl>
+                  <p className="mt-2 text-xs">
+                    Not yet applied. Approve or override it in the{" "}
+                    <a href="/review" className="underline">
+                      AI Review queue
+                    </a>
+                    .
+                  </p>
+                </div>
+              )}
+
               <div>
                 <button
                   disabled={busy}
@@ -371,5 +466,34 @@ export default function StaffPage() {
         </div>
       </div>
     </main>
+  );
+}
+
+/**
+ * A labeled field that renders its value, or a muted "Not assigned" placeholder
+ * when the value is empty. Readable in light and dark modes. The `dark` variant
+ * is used inside the amber recommendation panel (which already has dark text).
+ */
+function Field({
+  label,
+  value,
+  dark = false,
+}: {
+  label: string;
+  value: string | null | undefined;
+  dark?: boolean;
+}) {
+  const labelCls = dark ? "opacity-70" : "opacity-60";
+  return (
+    <div>
+      <dt className={`text-xs uppercase ${labelCls}`}>{label}</dt>
+      <dd className="mt-0.5 font-medium">
+        {value ? (
+          value
+        ) : (
+          <span className="font-normal italic opacity-50">Not assigned</span>
+        )}
+      </dd>
+    </div>
   );
 }

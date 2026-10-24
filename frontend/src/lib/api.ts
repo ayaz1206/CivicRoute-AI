@@ -209,6 +209,18 @@ export async function listComplaints(params: {
   );
 }
 
+/** Staff-only full complaint detail (includes department_id + history). */
+export async function getComplaintDetail(
+  complaintId: number,
+): Promise<ComplaintDetail> {
+  return json<ComplaintDetail>(
+    await fetch(`${API}/complaints/${complaintId}`, {
+      cache: "no-store",
+      headers: authHeaders(),
+    }),
+  );
+}
+
 export async function updateStatus(
   complaintId: number,
   status: ComplaintStatus,
