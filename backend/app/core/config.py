@@ -25,6 +25,11 @@ class Settings(BaseSettings):
     app_env: str = Field(default="development")
     api_prefix: str = Field(default="/api")
 
+    # Gate for unauthenticated staff/admin mutation endpoints. Until real auth
+    # lands (later milestone), these endpoints are only enabled in development.
+    # Leave unset to derive from APP_ENV; set explicitly to override.
+    allow_unauthenticated_admin: bool | None = Field(default=None)
+
     # Async SQLAlchemy URL, e.g.
     # postgresql+asyncpg://civicroute:civicroute@localhost:5432/civicroute
     database_url: str = Field(
@@ -48,6 +53,17 @@ class Settings(BaseSettings):
     @property
     def is_development(self) -> bool:
         return self.app_env == "development"
+
+    @property
+    def admin_endpoints_enabled(self) -> bool:
+        """Whether unauthenticated staff/admin mutations are permitted.
+
+        Defaults to development-only. Can be force-enabled/disabled via the
+        ALLOW_UNAUTHENTICATED_ADMIN env var (not recommended for production).
+        """
+        if self.allow_unauthenticated_admin is not None:
+            return self.allow_unauthenticated_admin
+        return self.is_development
 
 
 @lru_cache

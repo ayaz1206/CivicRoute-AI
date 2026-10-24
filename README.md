@@ -5,8 +5,10 @@ residents submit complaints, then uses an agentic workflow to classify, clarify,
 detect duplicates, score risk, and route each complaint to the right department —
 with human review and auditable AI decision logs throughout.
 
-> **Status:** M0 — Foundation. This milestone establishes the project skeleton only.
-> AI agents, authentication, and data ingestion are intentionally **not** implemented yet.
+> **Status:** M1 — Core Complaint Management. Residents can submit and track
+> complaints; staff can review and manage them through a validated status
+> lifecycle. AI agents, authentication, and historical 311 ingestion are
+> intentionally **not** implemented yet.
 
 ## Tech Stack
 
@@ -90,9 +92,12 @@ Frontend: http://localhost:3000
 
 ## Milestones
 
-- **M0 — Foundation** *(current)*: monorepo, FastAPI + Next.js skeletons, Postgres+pgvector,
+- **M0 — Foundation**: monorepo, FastAPI + Next.js skeletons, Postgres+pgvector,
   Alembic, config, health checks, tests, docs.
-- M1 — Core complaint loop
+- **M1 — Core complaint management** *(current)*: complaint domain models
+  (cities, departments, complaints, status history), complaint CRUD API with
+  validated status transitions, resident submission + tracking pages, staff
+  dashboard, and tests. Historical 311 data is kept separate from live complaints.
 - M2 — Agentic core (LangGraph)
 - M3 — Semantic intelligence + Boston 311 ingestion
 - M4 — Human review + admin analytics

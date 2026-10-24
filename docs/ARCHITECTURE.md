@@ -37,6 +37,8 @@ entity set (built out in M1–M4):
 - `users` — residents/staff/admins, scoped by city.
 - `complaints` — central entity; carries `source` (`web` vs `311_import`), status,
   category, priority, risk_score, department, and a nullable `duplicate_of_id` link.
+- `historical_311_requests` — dedicated table for historical Boston 311 reference
+  data, physically separate from live `complaints`.
 - `complaint_embeddings` — pgvector store, kept separate so re-embedding is clean.
 - `agent_runs` / `agent_steps` — auditable AI decision trail.
 - `clarifications` — AI questions + resident answers.
@@ -46,10 +48,25 @@ entity set (built out in M1–M4):
 
 ### Live vs. historical separation
 
-`complaints.source` discriminates origin. Historical 311 imports are flagged distinctly
-and excluded from live operational queries by default. Duplicate *detection* may compare a
-live complaint against historical patterns, but historical rows are never mutated by the
-live workflow and never auto-merged.
+Historical Boston 311 records live in a **dedicated `historical_311_requests`
+table**, physically separate from the live `complaints` table. No runtime API
+reads or writes historical data through complaint endpoints — those only touch
+`complaints`. The `complaints.source` discriminator remains as defense in depth
+(live submissions are always `web`). Historical data is append/refresh-only via
+the idempotent ingestion job and is never mutated by the live workflow or
+auto-merged.
+
+### Security posture (pre-auth)
+
+Authentication is not implemented yet. Until it is:
+
+- Staff/admin **mutation and listing** endpoints (complaint list, detail with
+  PII, status change, assignment) are gated by `require_admin` and are enabled
+  only in development. In any non-development environment they return 403 by
+  default, so an unprotected deployment cannot expose administrative operations
+  or bulk resident data. The gate is overridable via `ALLOW_UNAUTHENTICATED_ADMIN`.
+- The resident **tracking** endpoint is public and read-only, and returns a
+  PII-free projection (`ComplaintPublic`) that omits reporter name/email.
 
 ## Agent Workflow (target, M2+)
 

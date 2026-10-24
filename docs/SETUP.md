@@ -50,6 +50,7 @@ Run migrations and start the server:
 
 ```bash
 alembic upgrade head
+python -m app.seed              # seed Boston + departments (reference data only)
 uvicorn app.main:app --reload
 ```
 

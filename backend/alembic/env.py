@@ -15,8 +15,8 @@ from alembic import context
 from app.core.config import get_settings
 from app.db.base import Base
 
-# Import models here as they are added so autogenerate can see them.
-# (No models in M0.)
+# Import models so their tables register on Base.metadata for autogenerate.
+import app.models  # noqa: F401,E402
 
 config = context.config
 

@@ -12,6 +12,7 @@ dependencies = [
     "alembic==1.14.0",
     "pydantic==2.10.3",
     "pydantic-settings==2.6.1",
+    "email-validator==2.2.0",
     "pgvector==0.3.6",
 ]
 
@@ -39,6 +40,8 @@ testpaths = ["tests"]
 [tool.ruff]
 line-length = 100
 target-version = "py311"
+# Alembic migrations and env are machine-generated; don't lint them strictly.
+extend-exclude = ["alembic"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]

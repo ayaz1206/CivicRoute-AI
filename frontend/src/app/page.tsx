@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { getHealth, API_URL } from "@/lib/api";
 
 export const dynamic = "force-dynamic";
@@ -14,9 +15,33 @@ export default async function Home() {
           Agentic AI-powered smart city complaint management platform.
         </p>
         <span className="mt-1 w-fit rounded-full border px-2 py-0.5 text-xs opacity-70">
-          Milestone M0 — Foundation
+          Milestone M1 — Core Complaint Management
         </span>
       </header>
+
+      <section className="grid gap-4 sm:grid-cols-3">
+        <Link
+          href="/submit"
+          className="rounded-lg border p-5 transition hover:border-blue-400"
+        >
+          <h2 className="font-semibold">Submit a complaint</h2>
+          <p className="mt-1 text-xs opacity-60">Report an issue in your city.</p>
+        </Link>
+        <Link
+          href="/track"
+          className="rounded-lg border p-5 transition hover:border-blue-400"
+        >
+          <h2 className="font-semibold">Track a complaint</h2>
+          <p className="mt-1 text-xs opacity-60">Follow progress by code.</p>
+        </Link>
+        <Link
+          href="/staff"
+          className="rounded-lg border p-5 transition hover:border-blue-400"
+        >
+          <h2 className="font-semibold">Staff dashboard</h2>
+          <p className="mt-1 text-xs opacity-60">Review and manage complaints.</p>
+        </Link>
+      </section>
 
       <section className="rounded-lg border p-5">
         <h2 className="mb-3 text-lg font-semibold">Backend status</h2>
@@ -37,11 +62,6 @@ export default async function Home() {
           Checking <code>{API_URL}/health</code>
         </p>
       </section>
-
-      <footer className="text-xs opacity-50">
-        Resident submission, AI classification, routing, and analytics arrive in
-        later milestones.
-      </footer>
     </main>
   );
 }
