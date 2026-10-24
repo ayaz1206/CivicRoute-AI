@@ -1,0 +1,24 @@
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    container_name: civicroute-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: civicroute
+      POSTGRES_PASSWORD: civicroute
+      POSTGRES_DB: civicroute
+    # Host port is configurable to avoid collisions with other local Postgres
+    # instances. Defaults to 5433 (host) -> 5432 (container).
+    ports:
+      - "${DB_HOST_PORT:-5433}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./initdb:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U civicroute -d civicroute"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  pgdata:
