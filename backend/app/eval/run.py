@@ -54,6 +54,8 @@ async def main() -> None:
     print("=" * 72)
 
     cat_correct = pri_correct = pri_within1 = dept_correct = 0
+    pri_under = pri_over = 0  # directional priority errors
+    dangerous_under: list[str] = []  # under-prioritized safety-critical cases
     latencies: list[int] = []
     cal_pairs: list[tuple[float, bool]] = []
     tok_p = tok_c = 0
@@ -85,6 +87,18 @@ async def main() -> None:
                 and abs(_PRIORITY_ORDER[pred_pri] - _PRIORITY_ORDER[case.priority]) <= 1
             ):
                 pri_within1 += 1
+            # Directional error: under = model lower than gold (safety risk).
+            if pred_pri in _PRIORITY_ORDER:
+                delta = _PRIORITY_ORDER[pred_pri] - _PRIORITY_ORDER[case.priority]
+                if delta < 0:
+                    pri_under += 1
+                    # "Dangerous" = gold was high/urgent but model rated it lower.
+                    if case.priority in ("high", "urgent"):
+                        dangerous_under.append(
+                            f"{case.title!r}: gold={case.priority} pred={pred_pri}"
+                        )
+                elif delta > 0:
+                    pri_over += 1
             dept_correct += int(pred_dept == case.department_slug)
 
             conf = final.get("category_confidence")
@@ -99,7 +113,14 @@ async def main() -> None:
     print(f"  classification accuracy : {accuracy(cat_correct, n)}")
     print(f"  priority accuracy (exact): {accuracy(pri_correct, n)}")
     print(f"  priority within-1-level  : {accuracy(pri_within1, n)}")
+    print(f"  priority over-rated      : {pri_over}  under-rated: {pri_under}")
     print(f"  routing accuracy         : {accuracy(dept_correct, n)}")
+    if dangerous_under:
+        print("  DANGEROUS under-prioritizations (gold high/urgent -> lower):")
+        for d in dangerous_under:
+            print(f"    - {d}")
+    else:
+        print("  dangerous under-prioritizations: 0")
     print("\nConfidence calibration (classification):")
     print(f"  Brier score (lower=better): {brier_score(cal_pairs)}")
     for b in reliability_bins(cal_pairs):

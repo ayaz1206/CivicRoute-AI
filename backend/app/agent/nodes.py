@@ -125,8 +125,32 @@ class TriageNodes:
         try:
             out = await self.llm.complete_json(
                 system=(
-                    "Recommend a priority: low, medium, high, or urgent. "
-                    "Give a short rationale and a confidence in [0,1]."
+                    "You assign a triage priority to a city complaint using this "
+                    "rubric. Choose exactly one level:\n"
+                    "- urgent: an immediate threat to life or safety requiring a "
+                    "same-day emergency response. Examples: gas leak or gas odor, "
+                    "active flooding or water main break, downed or exposed "
+                    "electrical wire, sinkhole, fire hazard, injury hazard that is "
+                    "actively endangering people right now.\n"
+                    "- high: unsafe or significantly disruptive but NOT an "
+                    "immediate life-threatening emergency; should be handled "
+                    "promptly. Examples: a deep pothole cars must swerve around, a "
+                    "street light out at a dark crosswalk, a fallen branch "
+                    "blocking a sidewalk, a traffic signal malfunction.\n"
+                    "- medium: a real problem that degrades service or is a "
+                    "moderate hazard but is not dangerous day-to-day. Examples: a "
+                    "pothole damaging tires, overflowing trash, an abandoned "
+                    "vehicle, a cracked/uneven sidewalk, persistent nighttime "
+                    "noise.\n"
+                    "- low: minor, cosmetic, or routine with little safety "
+                    "impact. Examples: graffiti, a flickering or single light "
+                    "out on a non-critical street, a missed recycling pickup, "
+                    "faded paint.\n"
+                    "Do NOT inflate priority out of caution: reserve 'urgent' for "
+                    "immediate safety threats as defined above. When a complaint "
+                    "is merely unpleasant or inconvenient, prefer medium or low. "
+                    "Return the priority, a short rationale, and a confidence in "
+                    "[0,1]."
                 ),
                 user=user,
                 schema_hint=hint,
