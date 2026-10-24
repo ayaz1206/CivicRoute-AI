@@ -68,6 +68,42 @@ python -m app.ingestion.cli --max 5000   # default max is 5000
 Configuration (see `.env.example`): `BOSTON_311_RESOURCE_ID`,
 `BOSTON_311_MAX_RECORDS`, `BOSTON_311_PAGE_SIZE`.
 
+## Agentic triage (M3)
+
+A LangGraph workflow (`extract → classify → prioritize → route → gate`) triages a
+complaint and produces an auditable `AgentRecommendation`. AI output is kept
+separate from the complaint; values are applied only after a human approves or
+overrides them.
+
+- LLM provider is configurable via `LLM_PROVIDER` (`fake` default — deterministic,
+  offline; or `openai`/`anthropic` with `LLM_API_KEY`).
+- Low-confidence or high-risk (urgent) recommendations are routed to the human
+  review queue. Confidence threshold: `AGENT_REVIEW_THRESHOLD`.
+- Endpoints (all admin-gated): `POST /api/agent/complaints/{id}/triage`,
+  `GET /api/agent/runs/{id}`, `GET /api/agent/review-queue`,
+  `POST /api/agent/recommendations/{id}/decision`.
+
+No semantic duplicate detection, embeddings, notifications, or external
+integrations are implemented.
+
+### Evaluating the workflow against a real model
+
+`python -m app.agent.evaluate` runs the triage workflow over representative
+Boston-style complaints with the *configured* provider and reports model,
+outputs, confidence, latency, and (for real providers) token usage + an
+approximate cost. API keys are read from the environment and never logged.
+
+```bash
+# Offline (deterministic, default):
+python -m app.agent.evaluate
+# Real model (requires a key in the environment):
+LLM_PROVIDER=openai LLM_MODEL=gpt-4o-mini LLM_API_KEY=... python -m app.agent.evaluate
+```
+
+> Real-model telemetry (latency, tokens, cost) is only produced when a real
+> provider key is configured. Without one, the harness runs the `fake` provider
+> and reports no token/cost figures.
+
 ## Test
 
 ```bash

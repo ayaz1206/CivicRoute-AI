@@ -7,8 +7,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import Settings, get_settings
 from app.db.session import get_session
+from app.services.agent_service import AgentService
 from app.services.city_service import CityService
 from app.services.complaint_service import ComplaintService
+from app.services.review_service import ReviewService
 
 
 def get_complaint_service(
@@ -21,6 +23,18 @@ def get_city_service(
     session: AsyncSession = Depends(get_session),
 ) -> CityService:
     return CityService(session)
+
+
+def get_agent_service(
+    session: AsyncSession = Depends(get_session),
+) -> AgentService:
+    return AgentService(session)
+
+
+def get_review_service(
+    session: AsyncSession = Depends(get_session),
+) -> ReviewService:
+    return ReviewService(session)
 
 
 def require_admin(settings: Settings = Depends(get_settings)) -> None:

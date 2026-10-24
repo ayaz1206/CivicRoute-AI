@@ -31,6 +31,7 @@ from app.models.enums import ComplaintPriority, ComplaintSource, ComplaintStatus
 from app.models.mixins import TimestampMixin
 
 if TYPE_CHECKING:
+    from app.models.agent import AgentRecommendation, AgentRun
     from app.models.city import City
     from app.models.department import Department
     from app.models.status_history import StatusHistory
@@ -117,6 +118,16 @@ class Complaint(Base, TimestampMixin):
         back_populates="complaint",
         cascade="all, delete-orphan",
         order_by="StatusHistory.created_at",
+    )
+    agent_runs: Mapped[list[AgentRun]] = relationship(
+        back_populates="complaint",
+        cascade="all, delete-orphan",
+        order_by="AgentRun.id",
+    )
+    recommendations: Mapped[list[AgentRecommendation]] = relationship(
+        back_populates="complaint",
+        cascade="all, delete-orphan",
+        order_by="AgentRecommendation.id",
     )
 
     def __repr__(self) -> str:  # pragma: no cover - debug helper

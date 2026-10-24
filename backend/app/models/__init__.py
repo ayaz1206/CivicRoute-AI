@@ -4,13 +4,17 @@ Importing this package registers all models on ``Base.metadata`` so that
 Alembic autogenerate and ``create_all`` can see them.
 """
 
+from app.models.agent import AgentRecommendation, AgentRun, AgentStep
 from app.models.city import City
 from app.models.complaint import Complaint
 from app.models.department import Department
 from app.models.enums import (
+    AgentRunStatus,
     ComplaintPriority,
     ComplaintSource,
     ComplaintStatus,
+    RecommendationStatus,
+    ReviewSeverity,
 )
 from app.models.historical_request import Historical311Request
 from app.models.status_history import StatusHistory
@@ -21,7 +25,13 @@ __all__ = [
     "Complaint",
     "StatusHistory",
     "Historical311Request",
+    "AgentRun",
+    "AgentStep",
+    "AgentRecommendation",
     "ComplaintSource",
     "ComplaintStatus",
     "ComplaintPriority",
+    "AgentRunStatus",
+    "RecommendationStatus",
+    "ReviewSeverity",
 ]

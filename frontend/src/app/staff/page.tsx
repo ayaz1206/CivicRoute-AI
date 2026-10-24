@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import {
   listCities,
   listComplaints,
+  runTriage,
   trackComplaint,
   updateStatus,
   type City,
@@ -96,6 +97,26 @@ export default function StaffPage() {
       await refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Status update failed.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function triage() {
+    if (selectedId == null) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const run = await runTriage(selectedId);
+      const r = run.recommendation;
+      const msg = r
+        ? `AI run ${run.status}: ${r.category ?? "?"} / ${r.priority ?? "?"} / ${
+            r.department_slug ?? "no dept"
+          }${r.requires_review ? " — sent to AI Review queue" : ""}`
+        : `AI run ${run.status}${run.error ? `: ${run.error}` : ""}`;
+      setError(msg); // reuse the banner as a status line
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Triage failed.");
     } finally {
       setBusy(false);
     }
@@ -206,6 +227,20 @@ export default function StaffPage() {
                 <StatusBadge status={selected.status} />
               </div>
               <p className="text-sm opacity-80">{selected.description}</p>
+
+              <div>
+                <button
+                  disabled={busy}
+                  onClick={triage}
+                  className="rounded bg-indigo-600 px-3 py-1.5 text-sm text-white hover:bg-indigo-700 disabled:opacity-50"
+                >
+                  Run AI triage
+                </button>
+                <p className="mt-1 text-xs opacity-50">
+                  Generates an AI recommendation (does not change the complaint
+                  until approved in AI Review).
+                </p>
+              </div>
 
               <div>
                 <h3 className="mb-2 text-sm font-medium">Change status</h3>

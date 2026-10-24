@@ -70,3 +70,25 @@ async def boston_city_id() -> int:
             )
             await session.commit()
         return city.id
+
+
+@pytest.fixture
+async def make_complaint(boston_city_id: int):
+    """Factory that creates a live complaint and returns its id."""
+    from app.schemas.complaint import ComplaintCreate
+    from app.services.complaint_service import ComplaintService
+
+    async def _make(
+        title: str = "Large pothole on Main St",
+        description: str = "Deep pothole near the crosswalk, a real hazard to cars.",
+    ) -> int:
+        async with async_session_factory() as session:
+            svc = ComplaintService(session)
+            complaint = await svc.create(
+                ComplaintCreate(
+                    city_id=boston_city_id, title=title, description=description
+                )
+            )
+            return complaint.id
+
+    return _make

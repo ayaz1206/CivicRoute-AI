@@ -7,6 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from app import __version__
+from app.api.agent import router as agent_router
 from app.api.analytics import router as analytics_router
 from app.api.cities import router as cities_router
 from app.api.complaints import router as complaints_router
@@ -52,6 +53,7 @@ def create_app() -> FastAPI:
     app.include_router(complaints_router, prefix=settings.api_prefix)
     app.include_router(cities_router, prefix=settings.api_prefix)
     app.include_router(analytics_router, prefix=settings.api_prefix)
+    app.include_router(agent_router, prefix=settings.api_prefix)
 
     return app
 

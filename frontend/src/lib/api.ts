@@ -231,3 +231,97 @@ export async function getAnalyticsOverview(
     }),
   );
 }
+
+// ---- Agent / review ----
+
+export type AgentStep = {
+  id: number;
+  node_name: string;
+  input: Record<string, unknown>;
+  output: Record<string, unknown>;
+  confidence: number | null;
+  latency_ms: number | null;
+};
+
+export type Recommendation = {
+  id: number;
+  agent_run_id: number;
+  complaint_id: number;
+  extracted: Record<string, unknown>;
+  category: string | null;
+  category_confidence: number | null;
+  priority: ComplaintPriority | null;
+  priority_confidence: number | null;
+  priority_rationale: string | null;
+  department_slug: string | null;
+  department_confidence: number | null;
+  routing_evidence: Record<string, unknown>;
+  overall_confidence: number | null;
+  status: "pending" | "approved" | "overridden" | "rejected";
+  requires_review: boolean;
+  review_severity: "routine" | "low_confidence" | "high_risk";
+  review_reason: string | null;
+  reviewer: string | null;
+  reviewed_at: string | null;
+  final_category: string | null;
+  final_priority: ComplaintPriority | null;
+  final_department_slug: string | null;
+  review_note: string | null;
+  created_at: string;
+};
+
+export type AgentRunDetail = {
+  id: number;
+  complaint_id: number;
+  graph_version: string;
+  status: "running" | "completed" | "needs_review" | "failed";
+  llm_provider: string;
+  llm_model: string | null;
+  error: string | null;
+  created_at: string;
+  finished_at: string | null;
+  steps: AgentStep[];
+  recommendation: Recommendation | null;
+};
+
+export async function runTriage(complaintId: number): Promise<AgentRunDetail> {
+  return json<AgentRunDetail>(
+    await fetch(`${API}/agent/complaints/${complaintId}/triage`, {
+      method: "POST",
+    }),
+  );
+}
+
+export async function getReviewQueue(
+  cityId?: number,
+): Promise<Page<Recommendation>> {
+  const q = new URLSearchParams();
+  if (cityId != null) q.set("city_id", String(cityId));
+  return json<Page<Recommendation>>(
+    await fetch(`${API}/agent/review-queue?${q.toString()}`, {
+      cache: "no-store",
+    }),
+  );
+}
+
+export type DecisionPayload = {
+  decision: "approve" | "override" | "reject";
+  reviewer?: string;
+  note?: string;
+  category?: string;
+  priority?: ComplaintPriority;
+  department_slug?: string;
+};
+
+export async function decideRecommendation(
+  recommendationId: number,
+  payload: DecisionPayload,
+): Promise<Recommendation> {
+  return json<Recommendation>(
+    await fetch(`${API}/agent/recommendations/${recommendationId}/decision`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    }),
+  );
+}

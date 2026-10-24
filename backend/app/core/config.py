@@ -57,6 +57,15 @@ class Settings(BaseSettings):
     # Page size per API request (CKAN allows up to ~32000; keep modest).
     boston_311_page_size: int = Field(default=1000)
 
+    # --- LLM provider (M3) ---
+    # Provider adapter to use: "fake" (deterministic, no network/keys),
+    # "openai", or "anthropic". Defaults to "fake" so the system runs offline.
+    llm_provider: str = Field(default="fake")
+    llm_model: str | None = Field(default=None)
+    llm_api_key: str | None = Field(default=None)
+    # Confidence thresholds for auto vs. human review (M3).
+    agent_review_threshold: float = Field(default=0.7)
+
     @computed_field  # type: ignore[prop-decorator]
     @property
     def cors_origins(self) -> list[str]:

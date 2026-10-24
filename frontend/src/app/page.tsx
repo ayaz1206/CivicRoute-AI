@@ -50,6 +50,15 @@ export default async function Home() {
             Historical trends by category, neighborhood & department.
           </p>
         </Link>
+        <Link
+          href="/review"
+          className="rounded-lg border p-5 transition hover:border-blue-400"
+        >
+          <h2 className="font-semibold">AI review queue</h2>
+          <p className="mt-1 text-xs opacity-60">
+            Inspect AI recommendations, evidence & confidence.
+          </p>
+        </Link>
       </section>
 
       <section className="rounded-lg border p-5">

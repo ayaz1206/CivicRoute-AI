@@ -98,10 +98,14 @@ Frontend: http://localhost:3000
   (cities, departments, complaints, status history), complaint CRUD API with
   validated status transitions, resident submission + tracking pages, staff
   dashboard, and tests. Historical 311 data is kept separate from live complaints.
-- **M2 — Boston 311 integration & analytics** *(current)*: idempotent,
+- **M2 — Boston 311 integration & analytics**: idempotent,
   validated ingestion of Boston 311 Open Data into a dedicated
   `historical_311_requests` table, plus analytics APIs and dashboard
   visualizations (categories, neighborhoods, departments, statuses, trends).
-- M3 — Semantic intelligence + duplicate detection
-- M4 — Agentic core (LangGraph)
+- **M3 — LangGraph agentic core** *(current)*: a configurable-LLM triage
+  workflow (extract → classify → prioritize → route → gate) that produces
+  auditable, confidence-scored recommendations, routes uncertain/high-risk cases
+  to a human review queue, and keeps AI output separate from final complaint
+  data until a human approves or overrides. Admin inspection UI included.
+- M4 — Semantic duplicate detection (pgvector embeddings)
 - M5 — Evaluation & polish
