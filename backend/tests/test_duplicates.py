@@ -117,9 +117,60 @@ async def test_missing_location_reported_not_invented(make_complaint) -> None:
     assert links, "expected at least one candidate"
     loc = links[0].evidence["location"]
     # Neither complaint has coordinates or location_text -> evidence says so,
-    # and no address/coordinates are fabricated.
+    # no address/coordinates are fabricated, and missing data is treated as
+    # UNKNOWN (never as a mismatch).
     assert loc["type"] == "none"
+    assert loc["verdict"] == "unknown"
     assert "no location evidence" in loc["note"]
+
+
+async def test_location_verdicts(make_complaint) -> None:
+    """Location evidence classifies match / mismatch / unknown correctly and
+    missing data never counts as a mismatch."""
+    from app.models.complaint import Complaint
+    from app.services.duplicate_service import DuplicateService
+
+    async with async_session_factory() as session:
+        svc = DuplicateService(session)
+
+        def c(**kw):
+            return Complaint(tracking_code="x", city_id=1, title="t",
+                             description="d", **kw)
+
+        # Coordinates ~40m apart -> match.
+        near = svc._location_evidence(
+            c(latitude=42.3426, longitude=-71.0971),
+            c(latitude=42.3429, longitude=-71.0972),
+        )
+        assert near["verdict"] == "match"
+
+        # Coordinates ~3km apart -> mismatch.
+        far = svc._location_evidence(
+            c(latitude=42.3426, longitude=-71.0971),
+            c(latitude=42.3188, longitude=-71.0846),
+        )
+        assert far["verdict"] == "mismatch"
+
+        # Same street (different filler words) -> text match.
+        same_street = svc._location_evidence(
+            c(location_text="Dorchester Ave near the bus stop"),
+            c(location_text="Dorchester Avenue, by the bus stop"),
+        )
+        assert same_street["verdict"] == "match"
+
+        # Different streets -> text mismatch.
+        diff_street = svc._location_evidence(
+            c(location_text="Dorchester Ave"),
+            c(location_text="Beacon St"),
+        )
+        assert diff_street["verdict"] == "mismatch"
+
+        # Missing on one side -> unknown, NOT mismatch.
+        one_missing = svc._location_evidence(
+            c(location_text=None),
+            c(location_text="South End"),
+        )
+        assert one_missing["verdict"] == "unknown"
 
 
 async def test_human_confirmation_no_auto_merge(make_complaint) -> None:

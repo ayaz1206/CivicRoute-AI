@@ -85,8 +85,21 @@ class Settings(BaseSettings):
     # vs. unrelated 0.63-0.71, so 0.78 sits in the clean gap. Lower this only for
     # embedders whose unrelated-pair similarities are much closer to zero.
     duplicate_similarity_threshold: float = Field(default=0.78)
-    # Max distance (meters) for coordinates to count as location evidence.
+    # Retrieval floor: raw cosine below this is never considered (keeps KNN
+    # noise out). Candidates between this floor and the decision threshold are
+    # still scored, so location/category evidence can lift a borderline true
+    # duplicate over the line. The decision uses the COMBINED score, not raw
+    # cosine, against duplicate_similarity_threshold.
+    duplicate_retrieval_floor: float = Field(default=0.6)
+    # Max distance (meters) for coordinates to count as a location MATCH.
     duplicate_location_radius_m: float = Field(default=200.0)
+    # Distance (meters) beyond which two coordinates are a clear location
+    # MISMATCH (distinct places). Between radius and this is "near"/ambiguous.
+    duplicate_location_mismatch_m: float = Field(default=1000.0)
+    # Text-overlap (Jaccard) at/above this is a location MATCH; at/below the
+    # low bound is a MISMATCH; in between is ambiguous (treated as unknown).
+    duplicate_location_text_match: float = Field(default=0.5)
+    duplicate_location_text_mismatch: float = Field(default=0.1)
 
     # --- LLM safeguards & rate limiting (M5) ---
     llm_timeout_seconds: float = Field(default=20.0)

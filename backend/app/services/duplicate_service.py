@@ -17,6 +17,7 @@ evidence", not fabricated.
 from __future__ import annotations
 
 import math
+import re
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -35,6 +36,17 @@ _OPEN_STATUSES = {
     ComplaintStatus.IN_PROGRESS,
 }
 
+# Filler tokens ignored when comparing location text so that
+# "Dorchester Ave near the bus stop" and "Dorchester Avenue" still align on the
+# meaningful street token. Street-type synonyms are normalized separately.
+_LOC_STOPWORDS = {
+    "the", "near", "at", "by", "on", "corner", "of", "and", "a", "to",
+    "street", "st", "ave", "avenue", "rd", "road", "blvd", "boulevard",
+    "sq", "square", "ln", "lane", "dr", "drive", "ct", "court", "pl", "place",
+    "bus", "stop", "between", "front", "side",
+}
+_WORD_RE = re.compile(r"[a-z0-9]+")
+
 
 def _haversine_m(lat1, lon1, lat2, lon2) -> float | None:
     if None in (lat1, lon1, lat2, lon2):
@@ -47,10 +59,20 @@ def _haversine_m(lat1, lon1, lat2, lon2) -> float | None:
     return r * 2 * math.asin(math.sqrt(a))
 
 
+def _normalize_location_tokens(text: str) -> set[str]:
+    """Lowercase, strip punctuation/street-type/filler words -> content tokens
+    (typically the distinctive street/place names)."""
+    toks = _WORD_RE.findall(text.lower())
+    return {t for t in toks if t not in _LOC_STOPWORDS}
+
+
 def _complaint_text(c: Complaint) -> str:
+    """Text used for the SEMANTIC embedding — the issue itself (title +
+    description) only. Location is deliberately excluded here and handled
+    separately as structured location evidence, so a shared street name does
+    not inflate semantic similarity (which would double-count location once in
+    the vector and again in the location boost)."""
     parts = [c.title, c.description]
-    if c.location_text:
-        parts.append(c.location_text)
     return "\n".join(p for p in parts if p)
 
 
@@ -81,23 +103,56 @@ class DuplicateService:
         return existing
 
     def _location_evidence(self, src: Complaint, cand: Complaint) -> dict:
-        dist = _haversine_m(
-            src.latitude, src.longitude, cand.latitude, cand.longitude
-        )
+        """Compare two complaints' locations and return evidence with a verdict.
+
+        verdict is one of:
+          - "match"     : confidently the same place (boost)
+          - "mismatch"  : confidently different places (penalize)
+          - "ambiguous" : some signal but not decisive (neutral)
+          - "unknown"   : no usable location data on one/both (neutral)
+
+        Only provided coordinates/text are used; no location is invented, and
+        missing data is treated as unknown, never as a mismatch.
+        """
+        s = self.settings
+        dist = _haversine_m(src.latitude, src.longitude, cand.latitude, cand.longitude)
         if dist is not None:
+            if dist <= s.duplicate_location_radius_m:
+                verdict = "match"
+            elif dist >= s.duplicate_location_mismatch_m:
+                verdict = "mismatch"
+            else:
+                verdict = "ambiguous"
             return {
                 "type": "coordinates",
                 "distance_m": round(dist, 1),
-                "within_radius": dist <= self.settings.duplicate_location_radius_m,
+                "verdict": verdict,
             }
-        # No coordinates on one/both — fall back to text overlap if available,
-        # but never invent a location.
+
+        # No coordinates on one/both — compare normalized location text if BOTH
+        # have it. If either is missing, location is unknown (not a mismatch).
         if src.location_text and cand.location_text:
-            a = set(src.location_text.lower().split())
-            b = set(cand.location_text.lower().split())
-            overlap = len(a & b) / max(1, len(a | b))
-            return {"type": "text_overlap", "jaccard": round(overlap, 2)}
-        return {"type": "none", "note": "no location evidence available"}
+            a = _normalize_location_tokens(src.location_text)
+            b = _normalize_location_tokens(cand.location_text)
+            if not a or not b:
+                # Location text was all filler/street-types -> not decisive.
+                return {"type": "text", "jaccard": None, "verdict": "unknown"}
+            jaccard = round(len(a & b) / len(a | b), 2)
+            if jaccard >= s.duplicate_location_text_match:
+                verdict = "match"
+            elif jaccard <= s.duplicate_location_text_mismatch:
+                verdict = "mismatch"
+            else:
+                verdict = "ambiguous"
+            return {
+                "type": "text",
+                "jaccard": jaccard,
+                "shared": sorted(a & b),
+                "verdict": verdict,
+            }
+
+        return {"type": "none", "verdict": "unknown",
+                "note": "no location evidence available"}
 
     @staticmethod
     def _category_compatible(src: Complaint, cand: Complaint) -> bool | None:
@@ -108,18 +163,32 @@ class DuplicateService:
     def _combined_score(
         self, similarity: float, category_compat: bool | None, loc: dict, cand: Complaint
     ) -> float:
+        """Blend semantic similarity with category, location, and status.
+
+        Location is the key disambiguator between "same issue here" and "same
+        kind of issue elsewhere": a confident location match boosts, a confident
+        mismatch penalizes, and unknown/ambiguous locations are neutral.
+        """
         score = similarity
         if category_compat is True:
             score += 0.1
         elif category_compat is False:
             score -= 0.15
-        if loc.get("within_radius"):
-            score += 0.1
-        elif loc.get("type") == "text_overlap" and loc.get("jaccard", 0) >= 0.5:
-            score += 0.05
-        # Open complaints are more actionable duplicates than closed ones.
-        if cand.status in _OPEN_STATUSES:
-            score += 0.05
+
+        verdict = loc.get("verdict", "unknown")
+        if verdict == "match":
+            # Location corroborates — but only boost when the text is ALREADY
+            # near the decision threshold, so a shared street cannot carry a
+            # clearly sub-threshold (semantically different) pair over the line.
+            if similarity >= self.settings.duplicate_similarity_threshold - 0.03:
+                score += 0.08
+        elif verdict == "mismatch":
+            score -= 0.35  # clearly different place -> distinct incident
+        # "ambiguous" and "unknown" -> no location adjustment (neutral)
+
+        # NOTE: candidate status (open vs closed) is intentionally NOT part of
+        # the gate score — a weak signal must not push a sub-threshold pair over
+        # the line. Ranking is by combined score; ties are acceptable.
         return max(0.0, min(1.0, round(score, 4)))
 
     async def find_candidates(
@@ -138,6 +207,7 @@ class DuplicateService:
 
         # KNN over OTHER live complaints in the same city that have embeddings.
         threshold = self.settings.duplicate_similarity_threshold
+        retrieval_floor = self.settings.duplicate_retrieval_floor
         distance = ComplaintEmbedding.embedding.cosine_distance(emb.embedding)
         rows = await self.session.execute(
             select(Complaint, distance.label("dist"))
@@ -154,11 +224,16 @@ class DuplicateService:
         links: list[DuplicateLink] = []
         for cand, dist in rows.all():
             similarity = 1.0 - float(dist)  # cosine distance -> similarity
-            if similarity < threshold:
+            # Retrieval floor keeps obvious noise out but still admits
+            # borderline cases so location/category evidence can decide them.
+            if similarity < retrieval_floor:
                 continue
             category_compat = self._category_compatible(complaint, cand)
             loc = self._location_evidence(complaint, cand)
             combined = self._combined_score(similarity, category_compat, loc, cand)
+            # DECISION uses the location-aware combined score, not raw cosine.
+            if combined < threshold:
+                continue
 
             link = await self.session.scalar(
                 select(DuplicateLink).where(
