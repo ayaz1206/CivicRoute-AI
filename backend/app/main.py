@@ -11,6 +11,8 @@ from app.api.agent import router as agent_router
 from app.api.analytics import router as analytics_router
 from app.api.cities import router as cities_router
 from app.api.complaints import router as complaints_router
+from app.api.duplicates import admin_router as duplicates_admin_router
+from app.api.duplicates import public_router as clarifications_public_router
 from app.api.health import router as health_router
 from app.core.config import get_settings
 from app.services.errors import NotFoundError, ValidationError
@@ -54,6 +56,8 @@ def create_app() -> FastAPI:
     app.include_router(cities_router, prefix=settings.api_prefix)
     app.include_router(analytics_router, prefix=settings.api_prefix)
     app.include_router(agent_router, prefix=settings.api_prefix)
+    app.include_router(duplicates_admin_router, prefix=settings.api_prefix)
+    app.include_router(clarifications_public_router, prefix=settings.api_prefix)
 
     return app
 

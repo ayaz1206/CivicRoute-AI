@@ -9,7 +9,9 @@ from app.core.config import Settings, get_settings
 from app.db.session import get_session
 from app.services.agent_service import AgentService
 from app.services.city_service import CityService
+from app.services.clarification_service import ClarificationService
 from app.services.complaint_service import ComplaintService
+from app.services.duplicate_service import DuplicateService
 from app.services.review_service import ReviewService
 
 
@@ -35,6 +37,18 @@ def get_review_service(
     session: AsyncSession = Depends(get_session),
 ) -> ReviewService:
     return ReviewService(session)
+
+
+def get_duplicate_service(
+    session: AsyncSession = Depends(get_session),
+) -> DuplicateService:
+    return DuplicateService(session)
+
+
+def get_clarification_service(
+    session: AsyncSession = Depends(get_session),
+) -> ClarificationService:
+    return ClarificationService(session)
 
 
 def require_admin(settings: Settings = Depends(get_settings)) -> None:

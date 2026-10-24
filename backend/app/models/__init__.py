@@ -8,11 +8,14 @@ from app.models.agent import AgentRecommendation, AgentRun, AgentStep
 from app.models.city import City
 from app.models.complaint import Complaint
 from app.models.department import Department
+from app.models.duplicate import Clarification, ComplaintEmbedding, DuplicateLink
 from app.models.enums import (
     AgentRunStatus,
+    ClarificationStatus,
     ComplaintPriority,
     ComplaintSource,
     ComplaintStatus,
+    DuplicateDecision,
     RecommendationStatus,
     ReviewSeverity,
 )
@@ -28,10 +31,15 @@ __all__ = [
     "AgentRun",
     "AgentStep",
     "AgentRecommendation",
+    "ComplaintEmbedding",
+    "DuplicateLink",
+    "Clarification",
     "ComplaintSource",
     "ComplaintStatus",
     "ComplaintPriority",
     "AgentRunStatus",
     "RecommendationStatus",
     "ReviewSeverity",
+    "DuplicateDecision",
+    "ClarificationStatus",
 ]

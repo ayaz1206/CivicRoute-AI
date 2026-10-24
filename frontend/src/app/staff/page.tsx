@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useState } from "react";
 import {
+  detectDuplicates,
+  decideDuplicate,
   listCities,
   listComplaints,
   runTriage,
@@ -11,6 +13,7 @@ import {
   type Complaint,
   type ComplaintPublic,
   type ComplaintStatus,
+  type DuplicateCandidate,
 } from "@/lib/api";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Timeline } from "@/components/Timeline";
@@ -44,6 +47,7 @@ export default function StaffPage() {
   const [error, setError] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [selected, setSelected] = useState<ComplaintPublic | null>(null);
+  const [duplicates, setDuplicates] = useState<DuplicateCandidate[]>([]);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -79,6 +83,7 @@ export default function StaffPage() {
     if (found) {
       try {
         setSelectedId(id);
+        setDuplicates([]);
         setSelected(await trackComplaint(found.tracking_code));
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to load detail.");
@@ -117,6 +122,33 @@ export default function StaffPage() {
       setError(msg); // reuse the banner as a status line
     } catch (err) {
       setError(err instanceof Error ? err.message : "Triage failed.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function detectDup() {
+    if (selectedId == null) return;
+    setBusy(true);
+    setError(null);
+    try {
+      setDuplicates(await detectDuplicates(selectedId));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Duplicate detection failed.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function decideDup(linkId: number, decision: "confirm" | "reject") {
+    setBusy(true);
+    try {
+      const updated = await decideDuplicate(linkId, decision);
+      setDuplicates((prev) =>
+        prev.map((d) => (d.link_id === linkId ? updated : d)),
+      );
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Decision failed.");
     } finally {
       setBusy(false);
     }
@@ -236,11 +268,69 @@ export default function StaffPage() {
                 >
                   Run AI triage
                 </button>
+                <button
+                  disabled={busy}
+                  onClick={detectDup}
+                  className="ml-2 rounded bg-teal-600 px-3 py-1.5 text-sm text-white hover:bg-teal-700 disabled:opacity-50"
+                >
+                  Find duplicates
+                </button>
                 <p className="mt-1 text-xs opacity-50">
-                  Generates an AI recommendation (does not change the complaint
-                  until approved in AI Review).
+                  AI recommendations and duplicate links never change the
+                  complaint until a human approves or confirms them.
                 </p>
               </div>
+
+              {duplicates.length > 0 && (
+                <div className="rounded border p-3">
+                  <h3 className="mb-2 text-sm font-medium">
+                    Possible duplicates (human-confirmed, never auto-merged)
+                  </h3>
+                  <ul className="flex flex-col gap-3">
+                    {duplicates.map((d) => (
+                      <li key={d.link_id} className="text-sm">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="truncate" title={d.candidate_title}>
+                            #{d.candidate_complaint_id} {d.candidate_title}
+                          </span>
+                          <span className="shrink-0 tabular-nums text-xs opacity-60">
+                            {Math.round(d.similarity * 100)}% sim ·{" "}
+                            {Math.round(d.combined_score * 100)}% score
+                          </span>
+                        </div>
+                        <div className="mt-1 text-xs opacity-60">
+                          location:{" "}
+                          {(d.evidence.location as { type?: string })?.type ??
+                            "n/a"}{" "}
+                          · status {d.candidate_status}
+                        </div>
+                        {d.decision === "pending" ? (
+                          <div className="mt-1 flex gap-2">
+                            <button
+                              disabled={busy}
+                              onClick={() => decideDup(d.link_id, "confirm")}
+                              className="rounded border border-green-400 px-2 py-1 text-xs text-green-700 hover:bg-green-50"
+                            >
+                              Confirm duplicate
+                            </button>
+                            <button
+                              disabled={busy}
+                              onClick={() => decideDup(d.link_id, "reject")}
+                              className="rounded border px-2 py-1 text-xs hover:bg-gray-50"
+                            >
+                              Not a duplicate
+                            </button>
+                          </div>
+                        ) : (
+                          <span className="mt-1 inline-block text-xs font-medium opacity-70">
+                            {d.decision}
+                          </span>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
 
               <div>
                 <h3 className="mb-2 text-sm font-medium">Change status</h3>

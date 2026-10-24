@@ -102,10 +102,17 @@ Frontend: http://localhost:3000
   validated ingestion of Boston 311 Open Data into a dedicated
   `historical_311_requests` table, plus analytics APIs and dashboard
   visualizations (categories, neighborhoods, departments, statuses, trends).
-- **M3 — LangGraph agentic core** *(current)*: a configurable-LLM triage
+- **M3 — LangGraph agentic core**: a configurable-LLM triage
   workflow (extract → classify → prioritize → route → gate) that produces
   auditable, confidence-scored recommendations, routes uncertain/high-risk cases
   to a human review queue, and keeps AI output separate from final complaint
   data until a human approves or overrides. Admin inspection UI included.
-- M4 — Semantic duplicate detection (pgvector embeddings)
-- M5 — Evaluation & polish
+- **M4 — Semantic duplicate detection & clarification** *(current)*: pgvector
+  embeddings for live complaints (configurable provider, model/version
+  metadata); ranked possible-duplicate detection blending similarity, category,
+  location evidence, and status — human-confirmed, never auto-merged; a
+  LangGraph clarification step that asks residents targeted questions with
+  persisted, resumable Q&A; resident clarification UI and staff duplicate
+  review. Historical 311 data stays separate; no invented locations; no PII in
+  suggestions.
+- M5 — Evaluation & polish (accuracy harness vs. 311 labels, hardening)

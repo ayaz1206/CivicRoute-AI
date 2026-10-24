@@ -90,3 +90,19 @@ class ReviewSeverity(str, enum.Enum):
     LOW_CONFIDENCE = "low_confidence"
     # Case looks high-risk (urgent) or could not be routed/categorized.
     HIGH_RISK = "high_risk"
+
+
+class DuplicateDecision(str, enum.Enum):
+    """Human decision on a possible-duplicate link. Never set automatically."""
+
+    PENDING = "pending"
+    CONFIRMED = "confirmed"
+    REJECTED = "rejected"
+
+
+class ClarificationStatus(str, enum.Enum):
+    """State of a clarification question posed to a resident."""
+
+    PENDING = "pending"
+    ANSWERED = "answered"
+    DISMISSED = "dismissed"

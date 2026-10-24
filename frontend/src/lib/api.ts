@@ -325,3 +325,84 @@ export async function decideRecommendation(
     }),
   );
 }
+
+// ---- Duplicates ----
+
+export type DuplicateCandidate = {
+  link_id: number;
+  candidate_complaint_id: number;
+  candidate_tracking_code: string;
+  candidate_title: string;
+  candidate_status: string;
+  similarity: number;
+  combined_score: number;
+  evidence: Record<string, unknown>;
+  decision: "pending" | "confirmed" | "rejected";
+};
+
+export async function detectDuplicates(
+  complaintId: number,
+): Promise<DuplicateCandidate[]> {
+  return json<DuplicateCandidate[]>(
+    await fetch(`${API}/duplicates/complaints/${complaintId}/detect`, {
+      method: "POST",
+    }),
+  );
+}
+
+export async function listDuplicateCandidates(
+  complaintId: number,
+): Promise<DuplicateCandidate[]> {
+  return json<DuplicateCandidate[]>(
+    await fetch(`${API}/duplicates/complaints/${complaintId}/candidates`, {
+      cache: "no-store",
+    }),
+  );
+}
+
+export async function decideDuplicate(
+  linkId: number,
+  decision: "confirm" | "reject",
+  note?: string,
+): Promise<DuplicateCandidate> {
+  return json<DuplicateCandidate>(
+    await fetch(`${API}/duplicates/links/${linkId}/decision`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ decision, reviewer: "staff", note }),
+    }),
+  );
+}
+
+// ---- Clarifications (public, by tracking code) ----
+
+export type PublicClarification = {
+  id: number;
+  field: string;
+  question: string;
+  status: "pending" | "answered" | "dismissed";
+};
+
+export async function listClarifications(
+  trackingCode: string,
+): Promise<PublicClarification[]> {
+  return json<PublicClarification[]>(
+    await fetch(
+      `${API}/clarifications/track/${encodeURIComponent(trackingCode)}`,
+      { cache: "no-store" },
+    ),
+  );
+}
+
+export async function answerClarification(
+  clarificationId: number,
+  answer: string,
+): Promise<PublicClarification> {
+  return json<PublicClarification>(
+    await fetch(`${API}/clarifications/${clarificationId}/answer`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ answer }),
+    }),
+  );
+}

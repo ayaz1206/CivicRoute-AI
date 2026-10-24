@@ -66,6 +66,16 @@ class Settings(BaseSettings):
     # Confidence thresholds for auto vs. human review (M3).
     agent_review_threshold: float = Field(default=0.7)
 
+    # --- Embeddings / duplicate detection (M4) ---
+    embedding_provider: str = Field(default="fake")
+    embedding_model: str | None = Field(default=None)
+    # Vector dimension. Must match the DB column (see migration). 384 for fake.
+    embedding_dim: int = Field(default=384)
+    # Cosine-similarity floor for a complaint to be a duplicate candidate (0..1).
+    duplicate_similarity_threshold: float = Field(default=0.6)
+    # Max distance (meters) for coordinates to count as location evidence.
+    duplicate_location_radius_m: float = Field(default=200.0)
+
     @computed_field  # type: ignore[prop-decorator]
     @property
     def cors_origins(self) -> list[str]:

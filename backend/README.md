@@ -104,6 +104,23 @@ LLM_PROVIDER=openai LLM_MODEL=gpt-4o-mini LLM_API_KEY=... python -m app.agent.ev
 > provider key is configured. Without one, the harness runs the `fake` provider
 > and reports no token/cost figures.
 
+## Duplicate detection & clarification (M4)
+
+- Live complaints are embedded on submission (best-effort, non-blocking) into
+  `complaint_embeddings` (pgvector, HNSW cosine index) with model/version metadata.
+  Embedding provider is configurable (`EMBEDDING_PROVIDER`: `fake` default, `openai`).
+- `POST /api/duplicates/complaints/{id}/detect` returns a ranked list of possible
+  duplicates (live complaints only) blending similarity, category compatibility,
+  location evidence, and status. Results are **candidates**; staff confirm/reject
+  via `POST /api/duplicates/links/{id}/decision`. Complaints are **never auto-merged**.
+- `POST /api/duplicates/complaints/{id}/clarifications/generate` detects missing
+  info (location, detail) and asks targeted questions. Residents answer via the
+  public `GET/POST /api/clarifications/...` routes (keyed by tracking code).
+
+Guarantees: historical 311 data is never embedded or searched here; no addresses
+or coordinates are invented (location answers are stored as resident-provided
+text only); duplicate suggestions never expose other residents' PII.
+
 ## Test
 
 ```bash

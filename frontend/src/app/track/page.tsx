@@ -3,8 +3,11 @@
 import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import {
+  answerClarification,
+  listClarifications,
   trackComplaint,
   type ComplaintPublic,
+  type PublicClarification,
 } from "@/lib/api";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Timeline } from "@/components/Timeline";
@@ -13,20 +16,39 @@ function TrackInner() {
   const params = useSearchParams();
   const [code, setCode] = useState("");
   const [complaint, setComplaint] = useState<ComplaintPublic | null>(null);
+  const [clarifications, setClarifications] = useState<PublicClarification[]>([]);
+  const [answers, setAnswers] = useState<Record<number, string>>({});
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   async function lookup(c: string) {
     setError(null);
     setComplaint(null);
+    setClarifications([]);
     if (!c.trim()) return;
     setLoading(true);
     try {
       setComplaint(await trackComplaint(c.trim()));
+      try {
+        setClarifications(await listClarifications(c.trim()));
+      } catch {
+        /* clarifications are optional */
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Lookup failed.");
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function submitAnswer(id: number) {
+    const text = (answers[id] ?? "").trim();
+    if (!text) return;
+    try {
+      await answerClarification(id, text);
+      setClarifications((prev) => prev.filter((q) => q.id !== id));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not submit answer.");
     }
   }
 
@@ -106,6 +128,40 @@ function TrackInner() {
               </div>
             </dl>
           </div>
+
+          {clarifications.length > 0 && (
+            <div className="rounded-lg border border-amber-300 bg-amber-50 p-5">
+              <h3 className="mb-1 font-semibold text-amber-900">
+                We need a bit more information
+              </h3>
+              <p className="mb-4 text-xs text-amber-800">
+                Answering these helps us route and resolve your complaint faster.
+              </p>
+              <ul className="flex flex-col gap-4">
+                {clarifications.map((q) => (
+                  <li key={q.id} className="flex flex-col gap-2">
+                    <span className="text-sm">{q.question}</span>
+                    <div className="flex gap-2">
+                      <input
+                        value={answers[q.id] ?? ""}
+                        onChange={(e) =>
+                          setAnswers((a) => ({ ...a, [q.id]: e.target.value }))
+                        }
+                        placeholder="Your answer"
+                        className="flex-1 rounded border px-3 py-2 text-sm"
+                      />
+                      <button
+                        onClick={() => submitAnswer(q.id)}
+                        className="rounded bg-amber-600 px-4 py-2 text-sm text-white hover:bg-amber-700"
+                      >
+                        Submit
+                      </button>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
 
           <div className="rounded-lg border p-5">
             <h3 className="mb-4 font-semibold">Status timeline</h3>

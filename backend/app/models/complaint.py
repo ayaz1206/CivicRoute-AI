@@ -34,6 +34,7 @@ if TYPE_CHECKING:
     from app.models.agent import AgentRecommendation, AgentRun
     from app.models.city import City
     from app.models.department import Department
+    from app.models.duplicate import Clarification, ComplaintEmbedding
     from app.models.status_history import StatusHistory
 
 
@@ -128,6 +129,16 @@ class Complaint(Base, TimestampMixin):
         back_populates="complaint",
         cascade="all, delete-orphan",
         order_by="AgentRecommendation.id",
+    )
+    embedding: Mapped[ComplaintEmbedding | None] = relationship(
+        back_populates="complaint",
+        cascade="all, delete-orphan",
+        uselist=False,
+    )
+    clarifications: Mapped[list[Clarification]] = relationship(
+        back_populates="complaint",
+        cascade="all, delete-orphan",
+        order_by="Clarification.id",
     )
 
     def __repr__(self) -> str:  # pragma: no cover - debug helper

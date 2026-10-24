@@ -106,7 +106,28 @@ class ComplaintService:
         self.session.add(complaint)
         await self.session.commit()
         await self.session.refresh(complaint)
+
+        # Best-effort: embed the new complaint for duplicate detection using a
+        # SEPARATE session so an embedding failure cannot affect the committed
+        # complaint or poison this request's session.
+        await self._embed_best_effort(complaint.id)
+
         return complaint
+
+    async def _embed_best_effort(self, complaint_id: int) -> None:
+        """Embed a complaint in its own session; never raise."""
+        from app.db.session import async_session_factory
+        from app.services.duplicate_service import DuplicateService
+
+        try:
+            async with async_session_factory() as session:
+                svc = DuplicateService(session)
+                complaint = await svc.session.get(Complaint, complaint_id)
+                if complaint is not None:
+                    await svc.embed_complaint(complaint)
+                    await session.commit()
+        except Exception:  # noqa: BLE001 - embedding is non-critical at submit time
+            pass
 
     async def get(self, complaint_id: int, *, with_history: bool = False) -> Complaint:
         stmt = select(Complaint).where(Complaint.id == complaint_id)
