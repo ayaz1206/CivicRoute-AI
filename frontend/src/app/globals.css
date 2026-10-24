@@ -5,16 +5,68 @@
 :root {
   --background: #ffffff;
   --foreground: #0a0a0a;
+  /* Form control surface — distinct enough from the page background to read. */
+  --control-bg: #ffffff;
+  --control-fg: #0a0a0a;
+  --control-border: #d4d4d4;
+  --control-placeholder: #6b7280;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
     --background: #0a0a0a;
     --foreground: #ededed;
+    --control-bg: #1a1a1a;
+    --control-fg: #ededed;
+    --control-border: #3a3a3a;
+    --control-placeholder: #9ca3af;
   }
 }
 
 body {
   color: var(--foreground);
   background: var(--background);
+}
+
+/*
+ * Form controls must not inherit the body foreground color onto a white native
+ * background (which made typed text invisible in dark mode). Drive their colors
+ * from the theme variables so text, placeholders, focus and disabled states are
+ * readable in both light and dark modes.
+ */
+@layer base {
+  input,
+  textarea,
+  select {
+    background-color: var(--control-bg);
+    color: var(--control-fg);
+    border-color: var(--control-border);
+  }
+
+  input::placeholder,
+  textarea::placeholder {
+    color: var(--control-placeholder);
+    opacity: 1; /* Firefox lowers placeholder opacity by default */
+  }
+
+  /* Native dropdown option list (where supported). */
+  option {
+    background-color: var(--control-bg);
+    color: var(--control-fg);
+  }
+
+  input:focus,
+  textarea:focus,
+  select:focus {
+    outline: none;
+    border-color: #3b82f6; /* blue-500, matches existing accent buttons */
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.35);
+  }
+
+  input:disabled,
+  textarea:disabled,
+  select:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
 }
