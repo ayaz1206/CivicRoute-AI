@@ -1,4 +1,5 @@
 import type { CountItem } from "@/lib/api";
+import { formatNumber } from "@/lib/format";
 import { Card, CardBody, CardHeader } from "@/components/ui/Card";
 
 /** Horizontal bar chart using CSS widths — no chart library needed. */
@@ -25,7 +26,7 @@ export function BarChart({
                     {i.key}
                   </span>
                   <span className="shrink-0 tabular-nums text-content-muted">
-                    {i.count.toLocaleString()}
+                    {formatNumber(i.count)}
                   </span>
                 </div>
                 <div className="mt-1.5 h-2 w-full overflow-hidden rounded-full bg-surface-muted">

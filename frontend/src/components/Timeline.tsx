@@ -1,4 +1,5 @@
 import type { StatusHistoryEntry } from "@/lib/api";
+import { formatDateTime } from "@/lib/format";
 import { StatusBadge } from "./StatusBadge";
 
 export function Timeline({ entries }: { entries: StatusHistoryEntry[] }) {
@@ -24,7 +25,7 @@ export function Timeline({ entries }: { entries: StatusHistoryEntry[] }) {
             <div className="flex flex-wrap items-center gap-2">
               <StatusBadge status={e.to_status} />
               <span className="text-xs text-content-subtle">
-                {new Date(e.created_at).toLocaleString()}
+                {formatDateTime(e.created_at)}
               </span>
             </div>
             <span className="text-xs text-content-muted">by {e.actor}</span>

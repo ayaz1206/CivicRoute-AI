@@ -1,4 +1,5 @@
 import { getAnalyticsOverview } from "@/lib/api";
+import { formatNumber } from "@/lib/format";
 import { BarChart } from "@/components/BarChart";
 import { TrendChart } from "@/components/TrendChart";
 import { Container, PageHeader } from "@/components/ui/Page";
@@ -52,24 +53,24 @@ export default async function AnalyticsPage() {
           <section className="grid grid-cols-2 gap-4 lg:grid-cols-4">
             <StatCard
               label="Total cases"
-              value={summary.total.toLocaleString()}
+              value={formatNumber(summary.total)}
               tone="brand"
             />
             <StatCard
               label="Open"
-              value={summary.open.toLocaleString()}
+              value={formatNumber(summary.open)}
               tone="warning"
             />
             <StatCard
               label="Closed"
-              value={summary.closed.toLocaleString()}
+              value={formatNumber(summary.closed)}
               tone="success"
             />
             <StatCard
               label="Avg resolution (hrs)"
               value={
                 summary.avg_resolution_hours != null
-                  ? summary.avg_resolution_hours.toLocaleString()
+                  ? formatNumber(summary.avg_resolution_hours)
                   : "—"
               }
             />

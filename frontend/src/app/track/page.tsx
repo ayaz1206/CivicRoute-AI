@@ -11,6 +11,7 @@ import {
 } from "@/lib/api";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Timeline } from "@/components/Timeline";
+import { formatDate } from "@/lib/format";
 import { Container, PageHeader } from "@/components/ui/Page";
 import { Card, CardBody, CardHeader } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Field";
@@ -156,7 +157,7 @@ function TrackInner() {
                 )}
                 <DetailItem
                   label="Submitted"
-                  value={new Date(complaint.created_at).toLocaleDateString()}
+                  value={formatDate(complaint.created_at)}
                 />
               </dl>
             </CardBody>
