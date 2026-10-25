@@ -244,6 +244,16 @@ export type AuthUser = {
   full_name: string | null;
 };
 
+/** Authenticated staff user as returned by GET /auth/me (UserRead). */
+export type CurrentUser = {
+  id: number;
+  city_id: number;
+  email: string;
+  full_name: string | null;
+  role: "staff" | "admin";
+  is_active: boolean;
+};
+
 export async function login(
   email: string,
   password: string,
@@ -257,6 +267,32 @@ export async function login(
   );
   setToken(res.access_token);
   return res;
+}
+
+/**
+ * Validate the stored session against the backend and return the current user.
+ * Returns null when there is no token or the session is invalid/expired; in the
+ * expired/invalid case the stale token is cleared so the UI reverts to signed-out.
+ */
+export async function getMe(): Promise<CurrentUser | null> {
+  const token = getToken();
+  if (!token) return null;
+  try {
+    const res = await fetch(`${API}/auth/me`, {
+      cache: "no-store",
+      headers: authHeaders(),
+    });
+    if (res.status === 401) {
+      setToken(null); // expired or invalid — drop the stale token
+      return null;
+    }
+    if (!res.ok) return null;
+    return (await res.json()) as CurrentUser;
+  } catch {
+    // Network/backend down: keep the token (may be transient) but report null
+    // so the UI can show a signed-out state without destroying the session.
+    return null;
+  }
 }
 
 export function logout(): void {

@@ -4,9 +4,10 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/lib/cn";
-import { getToken, logout } from "@/lib/api";
+import { getToken, getMe, logout, type CurrentUser } from "@/lib/api";
 import { Icon } from "@/components/ui/Icon";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { UserMenu } from "@/components/UserMenu";
 
 type NavItem = { href: string; label: string; icon: React.ReactNode };
 
@@ -73,31 +74,68 @@ function NavLinks({
   );
 }
 
-function AuthControl({ onNavigate }: { onNavigate?: () => void }) {
+function AuthControl({
+  onNavigate,
+  variant = "desktop",
+}: {
+  onNavigate?: () => void;
+  variant?: "desktop" | "mobile";
+}) {
   const router = useRouter();
-  const [signedIn, setSignedIn] = useState(false);
+  const pathname = usePathname();
+  const [user, setUser] = useState<CurrentUser | null>(null);
+  const [loading, setLoading] = useState(true);
 
+  // Validate the stored session against the backend on mount and on route
+  // changes (so a post-login redirect reflects the signed-in state, and an
+  // expired session is detected and cleared). Reuses the existing auth client.
   useEffect(() => {
-    setSignedIn(getToken() != null);
-  }, []);
+    let cancelled = false;
+    if (getToken() == null) {
+      setUser(null);
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
+    getMe()
+      .then((u) => {
+        if (!cancelled) setUser(u);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [pathname]);
 
-  if (signedIn) {
+  function signOut() {
+    logout(); // securely clears the stored token (existing auth system)
+    setUser(null);
+    onNavigate?.();
+    router.push("/");
+    router.refresh();
+  }
+
+  if (loading) {
     return (
-      <button
-        onClick={() => {
-          logout();
-          setSignedIn(false);
-          onNavigate?.();
-          router.push("/");
-          router.refresh();
-        }}
-        className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-content-muted transition-colors hover:bg-surface-muted hover:text-content"
+      <div
+        className={cn(
+          "flex items-center gap-2",
+          variant === "mobile" && "px-3 py-2",
+        )}
+        aria-busy="true"
       >
-        <Icon.logout className="h-4.5 w-4.5" />
-        Sign out
-      </button>
+        <span className="h-8 w-8 animate-pulse rounded-full bg-surface-muted" />
+        <span className="hidden h-4 w-20 animate-pulse rounded bg-surface-muted sm:inline-block" />
+      </div>
     );
   }
+
+  if (user) {
+    return <UserMenu user={user} onSignOut={signOut} variant={variant} />;
+  }
+
   return (
     <Link
       href="/login"
@@ -175,7 +213,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 onNavigate={() => setMenuOpen(false)}
               />
               <div className="mt-2 border-t border-border pt-3">
-                <AuthControl onNavigate={() => setMenuOpen(false)} />
+                <AuthControl
+                  variant="mobile"
+                  onNavigate={() => setMenuOpen(false)}
+                />
               </div>
             </nav>
           </div>
