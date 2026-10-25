@@ -8,6 +8,14 @@ import {
 } from "@/lib/api";
 import { ConfidenceBar } from "@/components/ConfidenceBar";
 import { SeverityBadge } from "@/components/SeverityBadge";
+import { Container, PageHeader } from "@/components/ui/Page";
+import { Card, CardBody } from "@/components/ui/Card";
+import { Button } from "@/components/ui/Button";
+import { Field, Input, Select } from "@/components/ui/Field";
+import { Alert } from "@/components/ui/Alert";
+import { Badge } from "@/components/ui/Badge";
+import { EmptyState, Skeleton } from "@/components/ui/feedback";
+import { Icon } from "@/components/ui/Icon";
 
 const PRIORITIES = ["low", "medium", "high", "urgent"] as const;
 
@@ -15,6 +23,7 @@ export default function ReviewPage() {
   const [queue, setQueue] = useState<Recommendation[]>([]);
   const [selected, setSelected] = useState<Recommendation | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
 
   // Override form state.
@@ -25,11 +34,14 @@ export default function ReviewPage() {
 
   const refresh = useCallback(async () => {
     setError(null);
+    setLoading(true);
     try {
       const page = await getReviewQueue();
       setQueue(page.items);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load queue.");
+    } finally {
+      setLoading(false);
     }
   }, []);
 
@@ -71,101 +83,125 @@ export default function ReviewPage() {
     }
   }
 
+  const flagged = queue.filter((r) => r.review_severity !== "routine");
+  const routine = queue.filter((r) => r.review_severity === "routine");
+
+  const row = (r: Recommendation) => (
+    <li key={r.id}>
+      <button
+        onClick={() => select(r)}
+        className={`w-full border-t border-border px-4 py-3 text-left text-sm transition-colors hover:bg-surface-muted ${
+          selected?.id === r.id ? "bg-brand-50 dark:bg-brand-500/10" : ""
+        }`}
+      >
+        <div className="flex items-center justify-between gap-2">
+          <span className="font-medium text-content">
+            {r.category ?? "Uncategorized"}
+          </span>
+          <SeverityBadge severity={r.review_severity} />
+        </div>
+        <div className="mt-1 flex items-center justify-between gap-2 text-xs text-content-muted">
+          <span>complaint #{r.complaint_id}</span>
+          {r.review_reason && (
+            <span className="truncate pl-2" title={r.review_reason}>
+              {r.review_reason}
+            </span>
+          )}
+        </div>
+      </button>
+    </li>
+  );
+
   return (
-    <main className="mx-auto max-w-5xl px-6 py-12">
-      <h1 className="text-2xl font-bold">AI Review Queue</h1>
-      <p className="mt-1 text-sm opacity-70">
-        Inspect AI recommendations, evidence, and confidence. AI output is kept
-        separate from complaint data until you approve or override it.
-      </p>
+    <Container className="flex flex-col gap-6">
+      <PageHeader
+        eyebrow="Staff · Human-in-the-loop"
+        title="AI review queue"
+        description="Inspect AI recommendations, evidence, and confidence. AI output is kept separate from complaint data until you approve or override it."
+        actions={
+          <Button variant="secondary" size="sm" onClick={refresh}>
+            Refresh
+          </Button>
+        }
+      />
 
-      {error && (
-        <div className="mt-4 rounded border border-red-300 bg-red-50 p-3 text-sm text-red-800">
-          {error}
-        </div>
-      )}
+      {error && <Alert tone="error">{error}</Alert>}
 
-      <div className="mt-6 grid gap-6 lg:grid-cols-2">
-        <div className="overflow-hidden rounded-lg border">
-          <div className="flex items-center justify-between border-b bg-gray-50 px-4 py-2 text-xs uppercase opacity-60">
+      <div className="grid gap-6 lg:grid-cols-2">
+        {/* Queue */}
+        <Card className="overflow-hidden">
+          <div className="flex items-center justify-between border-b border-border bg-surface-muted px-4 py-2.5 text-xs font-semibold uppercase tracking-wide text-content-subtle">
             <span>Pending ({queue.length})</span>
-            <button onClick={refresh} className="hover:underline">
-              Refresh
-            </button>
           </div>
-          {(() => {
-            const flagged = queue.filter((r) => r.review_severity !== "routine");
-            const routine = queue.filter((r) => r.review_severity === "routine");
-            const row = (r: Recommendation) => (
-              <li
-                key={r.id}
-                onClick={() => select(r)}
-                className={`cursor-pointer border-t px-4 py-3 text-sm hover:bg-blue-50 ${
-                  selected?.id === r.id ? "bg-blue-50" : ""
-                }`}
-              >
-                <div className="flex items-center justify-between gap-2">
-                  <span className="font-medium">
-                    {r.category ?? "Uncategorized"}
-                  </span>
-                  <SeverityBadge severity={r.review_severity} />
-                </div>
-                <div className="mt-1 flex items-center justify-between text-xs opacity-70">
-                  <span>complaint #{r.complaint_id}</span>
-                  {r.review_reason && (
-                    <span className="truncate pl-2" title={r.review_reason}>
-                      {r.review_reason}
-                    </span>
-                  )}
-                </div>
-              </li>
-            );
-            return (
-              <>
-                {queue.length === 0 && (
-                  <p className="px-4 py-6 text-center text-sm opacity-60">
-                    Queue is empty.
-                  </p>
-                )}
-                {flagged.length > 0 && (
-                  <>
-                    <div className="bg-red-50 px-4 py-1.5 text-xs font-semibold uppercase text-red-800">
-                      Needs attention — high-risk / low-confidence ({flagged.length})
-                    </div>
-                    <ul>{flagged.map(row)}</ul>
-                  </>
-                )}
-                {routine.length > 0 && (
-                  <>
-                    <div className="bg-gray-50 px-4 py-1.5 text-xs font-semibold uppercase opacity-60">
-                      Routine — awaiting mandatory approval ({routine.length})
-                    </div>
-                    <ul>{routine.map(row)}</ul>
-                  </>
-                )}
-              </>
-            );
-          })()}
-        </div>
 
-        <div className="rounded-lg border p-5">
-          {!selected ? (
-            <p className="text-sm opacity-60">
-              Select a recommendation to inspect and decide.
-            </p>
+          {loading ? (
+            <div className="flex flex-col gap-2 p-4">
+              <Skeleton className="h-12 w-full" />
+              <Skeleton className="h-12 w-full" />
+              <Skeleton className="h-12 w-full" />
+            </div>
+          ) : queue.length === 0 ? (
+            <div className="p-4">
+              <EmptyState
+                tone="success"
+                icon={<Icon.check className="h-8 w-8" />}
+                title="Queue is empty"
+                description="No AI recommendations are awaiting review."
+              />
+            </div>
           ) : (
-            <div className="flex flex-col gap-4 text-sm">
+            <>
+              {flagged.length > 0 && (
+                <>
+                  <div className="flex items-center gap-2 bg-red-50 px-4 py-1.5 text-xs font-semibold uppercase text-red-800 dark:bg-red-500/10 dark:text-red-300">
+                    <Icon.alert className="h-3.5 w-3.5" />
+                    Needs attention — high-risk / low-confidence ({flagged.length})
+                  </div>
+                  <ul>{flagged.map(row)}</ul>
+                </>
+              )}
+              {routine.length > 0 && (
+                <>
+                  <div className="bg-surface-muted px-4 py-1.5 text-xs font-semibold uppercase tracking-wide text-content-subtle">
+                    Routine — awaiting mandatory approval ({routine.length})
+                  </div>
+                  <ul>{routine.map(row)}</ul>
+                </>
+              )}
+            </>
+          )}
+        </Card>
+
+        {/* Detail */}
+        <Card>
+          {!selected ? (
+            <CardBody>
+              <EmptyState
+                icon={<Icon.sparkles className="h-8 w-8" />}
+                title="Select a recommendation"
+                description="Choose an item from the queue to inspect its evidence, confidence, and decide."
+              />
+            </CardBody>
+          ) : (
+            <CardBody className="flex flex-col gap-5 text-sm">
               <div>
                 <div className="flex items-center justify-between">
-                  <h2 className="font-semibold">AI recommendation</h2>
+                  <div className="flex items-center gap-2">
+                    <Badge tone="brand" icon={<Icon.sparkles className="h-3.5 w-3.5" />}>
+                      AI recommendation
+                    </Badge>
+                    <span className="text-xs text-content-subtle">
+                      complaint #{selected.complaint_id}
+                    </span>
+                  </div>
                   <SeverityBadge severity={selected.review_severity} />
                 </div>
-                <dl className="mt-2 grid grid-cols-2 gap-2">
-                  <Field label="Category" value={selected.category} />
-                  <Field label="Priority" value={selected.priority} />
-                  <Field label="Department" value={selected.department_slug} />
-                  <Field
-                    label="Overall"
+                <dl className="mt-3 grid grid-cols-2 gap-3">
+                  <KV label="Category" value={selected.category} />
+                  <KV label="Priority" value={selected.priority} />
+                  <KV label="Department" value={selected.department_slug} />
+                  <KV
+                    label="Overall confidence"
                     value={
                       selected.overall_confidence != null
                         ? `${Math.round(selected.overall_confidence * 100)}%`
@@ -175,7 +211,7 @@ export default function ReviewPage() {
                 </dl>
               </div>
 
-              <div className="flex flex-col gap-2">
+              <div className="flex flex-col gap-2.5 rounded-xl border border-border bg-surface-muted p-3">
                 <ConfidenceBar
                   label="Classification"
                   value={selected.category_confidence}
@@ -192,46 +228,48 @@ export default function ReviewPage() {
 
               {selected.priority_rationale && (
                 <div>
-                  <h3 className="text-xs font-medium uppercase opacity-60">
+                  <h3 className="text-xs font-semibold uppercase tracking-wide text-content-subtle">
                     Priority rationale
                   </h3>
-                  <p className="mt-1">{selected.priority_rationale}</p>
+                  <p className="mt-1 text-content">
+                    {selected.priority_rationale}
+                  </p>
                 </div>
               )}
 
-              <div>
-                <h3 className="text-xs font-medium uppercase opacity-60">
-                  Routing evidence
-                </h3>
-                <pre className="mt-1 overflow-x-auto rounded bg-gray-50 p-2 text-xs">
-                  {JSON.stringify(selected.routing_evidence, null, 2)}
-                </pre>
-              </div>
+              <details className="group">
+                <summary className="cursor-pointer text-xs font-semibold uppercase tracking-wide text-content-subtle">
+                  Routing evidence &amp; extracted details
+                </summary>
+                <div className="mt-2 flex flex-col gap-2">
+                  <pre className="overflow-x-auto rounded-lg bg-surface-muted p-2.5 text-xs text-content">
+                    {JSON.stringify(selected.routing_evidence, null, 2)}
+                  </pre>
+                  <pre className="overflow-x-auto rounded-lg bg-surface-muted p-2.5 text-xs text-content">
+                    {JSON.stringify(selected.extracted, null, 2)}
+                  </pre>
+                </div>
+              </details>
 
-              <div>
-                <h3 className="text-xs font-medium uppercase opacity-60">
-                  Extracted details
+              {/* Human override — visually separated from the AI proposal. */}
+              <div className="rounded-xl border border-border p-3">
+                <h3 className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-content-subtle">
+                  <Icon.user className="h-3.5 w-3.5" />
+                  Human override (optional)
                 </h3>
-                <pre className="mt-1 overflow-x-auto rounded bg-gray-50 p-2 text-xs">
-                  {JSON.stringify(selected.extracted, null, 2)}
-                </pre>
-              </div>
-
-              <div className="rounded border p-3">
-                <h3 className="mb-2 text-xs font-medium uppercase opacity-60">
-                  Override (optional)
-                </h3>
-                <div className="grid grid-cols-3 gap-2">
-                  <input
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+                  <Input
                     value={ovCategory}
                     onChange={(e) => setOvCategory(e.target.value)}
                     placeholder="category"
-                    className="rounded border px-2 py-1 text-xs"
+                    aria-label="Override category"
+                    className="text-xs"
                   />
-                  <select
+                  <Select
                     value={ovPriority}
                     onChange={(e) => setOvPriority(e.target.value)}
-                    className="rounded border px-2 py-1 text-xs"
+                    aria-label="Override priority"
+                    className="text-xs"
                   >
                     <option value="">priority</option>
                     {PRIORITIES.map((p) => (
@@ -239,58 +277,63 @@ export default function ReviewPage() {
                         {p}
                       </option>
                     ))}
-                  </select>
-                  <input
+                  </Select>
+                  <Input
                     value={ovDept}
                     onChange={(e) => setOvDept(e.target.value)}
                     placeholder="dept slug"
-                    className="rounded border px-2 py-1 text-xs"
+                    aria-label="Override department slug"
+                    className="text-xs"
                   />
                 </div>
-                <input
+                <Input
                   value={note}
                   onChange={(e) => setNote(e.target.value)}
                   placeholder="note (optional)"
-                  className="mt-2 w-full rounded border px-2 py-1 text-xs"
+                  aria-label="Review note"
+                  className="mt-2 text-xs"
                 />
               </div>
 
-              <div className="flex gap-2">
-                <button
-                  disabled={busy}
+              <div className="flex flex-wrap gap-2 border-t border-border pt-4">
+                <Button
+                  variant="success"
+                  loading={busy}
                   onClick={() => decide("approve")}
-                  className="rounded bg-green-600 px-4 py-2 text-white hover:bg-green-700 disabled:opacity-50"
                 >
+                  <Icon.check className="h-4 w-4" />
                   Approve
-                </button>
-                <button
-                  disabled={busy}
+                </Button>
+                <Button
+                  variant="secondary"
+                  loading={busy}
                   onClick={() => decide("override")}
-                  className="rounded bg-amber-600 px-4 py-2 text-white hover:bg-amber-700 disabled:opacity-50"
                 >
                   Override
-                </button>
-                <button
-                  disabled={busy}
+                </Button>
+                <Button
+                  variant="ghost"
+                  loading={busy}
                   onClick={() => decide("reject")}
-                  className="rounded border px-4 py-2 hover:bg-gray-50 disabled:opacity-50"
                 >
                   Reject
-                </button>
+                </Button>
               </div>
-            </div>
+            </CardBody>
           )}
-        </div>
+        </Card>
       </div>
-    </main>
+    </Container>
   );
 }
 
-function Field({ label, value }: { label: string; value: string | null }) {
+function KV({ label, value }: { label: string; value: string | null }) {
   return (
     <div>
-      <dt className="text-xs uppercase opacity-60">{label}</dt>
-      <dd className="font-medium">{value ?? "—"}</dd>
+      <dt className="text-xs font-medium uppercase tracking-wide text-content-subtle">
+        {label}
+      </dt>
+      <dd className="mt-0.5 font-medium text-content">{value ?? "—"}</dd>
     </div>
   );
 }

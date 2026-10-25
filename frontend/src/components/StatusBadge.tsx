@@ -1,12 +1,13 @@
 import type { ComplaintStatus } from "@/lib/api";
+import { Badge, type BadgeTone } from "@/components/ui/Badge";
 
-const STYLES: Record<ComplaintStatus, string> = {
-  submitted: "bg-blue-100 text-blue-800",
-  triaged: "bg-indigo-100 text-indigo-800",
-  in_progress: "bg-amber-100 text-amber-800",
-  resolved: "bg-green-100 text-green-800",
-  closed: "bg-gray-200 text-gray-700",
-  rejected: "bg-red-100 text-red-800",
+const TONES: Record<ComplaintStatus, BadgeTone> = {
+  submitted: "info",
+  triaged: "brand",
+  in_progress: "warning",
+  resolved: "success",
+  closed: "neutral",
+  rejected: "danger",
 };
 
 const LABELS: Record<ComplaintStatus, string> = {
@@ -19,11 +20,11 @@ const LABELS: Record<ComplaintStatus, string> = {
 };
 
 export function StatusBadge({ status }: { status: ComplaintStatus }) {
+  // A leading dot gives a non-color cue in addition to tone + text label.
   return (
-    <span
-      className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-medium ${STYLES[status]}`}
-    >
+    <Badge tone={TONES[status]}>
+      <span className="h-1.5 w-1.5 rounded-full bg-current opacity-70" aria-hidden />
       {LABELS[status]}
-    </span>
+    </Badge>
   );
 }

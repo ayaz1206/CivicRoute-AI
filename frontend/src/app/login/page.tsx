@@ -3,6 +3,12 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { login } from "@/lib/api";
+import { Container } from "@/components/ui/Page";
+import { Card, CardBody } from "@/components/ui/Card";
+import { Field, Input } from "@/components/ui/Field";
+import { Button } from "@/components/ui/Button";
+import { Alert } from "@/components/ui/Alert";
+import { Icon } from "@/components/ui/Icon";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -23,7 +29,9 @@ export default function LoginPage() {
       void user;
     } catch (err) {
       setError(
-        err instanceof Error ? err.message : "Login failed. Check your credentials.",
+        err instanceof Error
+          ? err.message
+          : "Login failed. Check your credentials.",
       );
     } finally {
       setBusy(false);
@@ -31,47 +39,56 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="mx-auto max-w-sm px-6 py-16">
-      <h1 className="text-2xl font-bold">Staff sign in</h1>
-      <p className="mt-1 text-sm opacity-70">
-        Staff and administrators only. Residents don&apos;t need an account.
-      </p>
-
-      {error && (
-        <div className="mt-4 rounded border border-red-300 bg-red-50 p-3 text-sm text-red-800">
-          {error}
+    <Container size="narrow" className="py-8">
+      <div className="mx-auto max-w-sm">
+        <div className="mb-6 flex flex-col items-center text-center">
+          <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-brand-600 text-white shadow-sm">
+            <Icon.shield className="h-6 w-6" />
+          </span>
+          <h1 className="mt-4 text-2xl font-bold tracking-tight text-content">
+            Staff sign in
+          </h1>
+          <p className="mt-1 text-sm text-content-muted">
+            Staff and administrators only. Residents don&apos;t need an account.
+          </p>
         </div>
-      )}
 
-      <form onSubmit={onSubmit} className="mt-6 flex flex-col gap-4">
-        <label className="flex flex-col gap-1 text-sm">
-          Email
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-            className="rounded border px-3 py-2"
-          />
-        </label>
-        <label className="flex flex-col gap-1 text-sm">
-          Password
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-            className="rounded border px-3 py-2"
-          />
-        </label>
-        <button
-          type="submit"
-          disabled={busy}
-          className="mt-2 rounded bg-blue-600 px-4 py-2 font-medium text-white hover:bg-blue-700 disabled:opacity-50"
-        >
-          {busy ? "Signing in…" : "Sign in"}
-        </button>
-      </form>
-    </main>
+        <Card>
+          <CardBody>
+            {error && (
+              <Alert tone="error" className="mb-4">
+                {error}
+              </Alert>
+            )}
+            <form onSubmit={onSubmit} className="flex flex-col gap-4">
+              <Field label="Email" htmlFor="email" required>
+                <Input
+                  id="email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  autoComplete="email"
+                  placeholder="you@city.gov"
+                />
+              </Field>
+              <Field label="Password" htmlFor="password" required>
+                <Input
+                  id="password"
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  autoComplete="current-password"
+                />
+              </Field>
+              <Button type="submit" loading={busy} className="mt-1 w-full">
+                {busy ? "Signing in…" : "Sign in"}
+              </Button>
+            </form>
+          </CardBody>
+        </Card>
+      </div>
+    </Container>
   );
 }

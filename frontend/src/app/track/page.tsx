@@ -11,6 +11,24 @@ import {
 } from "@/lib/api";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Timeline } from "@/components/Timeline";
+import { Container, PageHeader } from "@/components/ui/Page";
+import { Card, CardBody, CardHeader } from "@/components/ui/Card";
+import { Input } from "@/components/ui/Field";
+import { Button } from "@/components/ui/Button";
+import { Alert } from "@/components/ui/Alert";
+import { Skeleton } from "@/components/ui/feedback";
+import { Icon } from "@/components/ui/Icon";
+
+function DetailItem({ label, value }: { label: string; value: React.ReactNode }) {
+  return (
+    <div>
+      <dt className="text-xs font-medium uppercase tracking-wide text-content-subtle">
+        {label}
+      </dt>
+      <dd className="mt-0.5 text-sm text-content">{value}</dd>
+    </div>
+  );
+}
 
 function TrackInner() {
   const params = useSearchParams();
@@ -20,6 +38,7 @@ function TrackInner() {
   const [answers, setAnswers] = useState<Record<number, string>>({});
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [busyId, setBusyId] = useState<number | null>(null);
 
   async function lookup(c: string) {
     setError(null);
@@ -44,11 +63,14 @@ function TrackInner() {
   async function submitAnswer(id: number) {
     const text = (answers[id] ?? "").trim();
     if (!text) return;
+    setBusyId(id);
     try {
       await answerClarification(id, text);
       setClarifications((prev) => prev.filter((q) => q.id !== id));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not submit answer.");
+    } finally {
+      setBusyId(null);
     }
   }
 
@@ -63,119 +85,150 @@ function TrackInner() {
   }, []);
 
   return (
-    <main className="mx-auto max-w-xl px-6 py-12">
-      <h1 className="text-2xl font-bold">Track a complaint</h1>
-      <p className="mt-1 text-sm opacity-70">
-        Enter the tracking code you received when you submitted.
-      </p>
+    <Container size="narrow" className="flex flex-col gap-6">
+      <PageHeader
+        eyebrow="Residents"
+        title="Track a complaint"
+        description="Enter the tracking code you received when you submitted."
+      />
 
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          lookup(code);
-        }}
-        className="mt-6 flex gap-2"
-      >
-        <input
-          value={code}
-          onChange={(e) => setCode(e.target.value.toUpperCase())}
-          placeholder="CR-XXXXXXXX"
-          className="flex-1 rounded border px-3 py-2 font-mono"
-        />
-        <button
-          type="submit"
-          disabled={loading}
-          className="rounded bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 disabled:opacity-50"
-        >
-          {loading ? "…" : "Track"}
-        </button>
-      </form>
+      <Card>
+        <CardBody>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              lookup(code);
+            }}
+            className="flex gap-2"
+          >
+            <Input
+              value={code}
+              onChange={(e) => setCode(e.target.value.toUpperCase())}
+              placeholder="CR-XXXXXXXX"
+              aria-label="Tracking code"
+              className="font-mono"
+            />
+            <Button type="submit" loading={loading} className="shrink-0">
+              <Icon.search className="h-4 w-4" />
+              Track
+            </Button>
+          </form>
+        </CardBody>
+      </Card>
 
-      {error && (
-        <div className="mt-4 rounded border border-red-300 bg-red-50 p-3 text-sm text-red-800">
-          {error}
-        </div>
+      {error && <Alert tone="error">{error}</Alert>}
+
+      {loading && (
+        <Card>
+          <CardBody className="flex flex-col gap-3">
+            <Skeleton className="h-6 w-2/3" />
+            <Skeleton className="h-4 w-full" />
+            <Skeleton className="h-4 w-1/2" />
+          </CardBody>
+        </Card>
       )}
 
-      {complaint && (
-        <section className="mt-8 flex flex-col gap-6">
-          <div className="rounded-lg border p-5">
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold">{complaint.title}</h2>
-              <StatusBadge status={complaint.status} />
-            </div>
-            <p className="mt-2 text-sm opacity-80">{complaint.description}</p>
-            <dl className="mt-4 grid grid-cols-2 gap-2 text-xs opacity-70">
-              <div>
-                <dt className="font-medium">Tracking code</dt>
-                <dd className="font-mono">{complaint.tracking_code}</dd>
+      {complaint && !loading && (
+        <section className="flex flex-col gap-6">
+          <Card>
+            <CardBody>
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <h2 className="text-lg font-semibold text-content">
+                  {complaint.title}
+                </h2>
+                <StatusBadge status={complaint.status} />
               </div>
-              {complaint.location_text && (
-                <div>
-                  <dt className="font-medium">Location</dt>
-                  <dd>{complaint.location_text}</dd>
-                </div>
-              )}
-              {complaint.category && (
-                <div>
-                  <dt className="font-medium">Category</dt>
-                  <dd>{complaint.category}</dd>
-                </div>
-              )}
-              <div>
-                <dt className="font-medium">Submitted</dt>
-                <dd>{new Date(complaint.created_at).toLocaleDateString()}</dd>
-              </div>
-            </dl>
-          </div>
+              <p className="mt-2 text-sm text-content-muted">
+                {complaint.description}
+              </p>
+              <dl className="mt-5 grid grid-cols-2 gap-4">
+                <DetailItem
+                  label="Tracking code"
+                  value={
+                    <span className="font-mono">{complaint.tracking_code}</span>
+                  }
+                />
+                {complaint.location_text && (
+                  <DetailItem label="Location" value={complaint.location_text} />
+                )}
+                {complaint.category && (
+                  <DetailItem label="Category" value={complaint.category} />
+                )}
+                <DetailItem
+                  label="Submitted"
+                  value={new Date(complaint.created_at).toLocaleDateString()}
+                />
+              </dl>
+            </CardBody>
+          </Card>
 
           {clarifications.length > 0 && (
-            <div className="rounded-lg border border-amber-300 bg-amber-50 p-5">
-              <h3 className="mb-1 font-semibold text-amber-900">
-                We need a bit more information
-              </h3>
-              <p className="mb-4 text-xs text-amber-800">
-                Answering these helps us route and resolve your complaint faster.
-              </p>
-              <ul className="flex flex-col gap-4">
-                {clarifications.map((q) => (
-                  <li key={q.id} className="flex flex-col gap-2">
-                    <span className="text-sm">{q.question}</span>
-                    <div className="flex gap-2">
-                      <input
-                        value={answers[q.id] ?? ""}
-                        onChange={(e) =>
-                          setAnswers((a) => ({ ...a, [q.id]: e.target.value }))
-                        }
-                        placeholder="Your answer"
-                        className="flex-1 rounded border px-3 py-2 text-sm"
-                      />
-                      <button
-                        onClick={() => submitAnswer(q.id)}
-                        className="rounded bg-amber-600 px-4 py-2 text-sm text-white hover:bg-amber-700"
+            <Card className="border-amber-300 dark:border-amber-500/40">
+              <CardHeader
+                title={
+                  <span className="flex items-center gap-2">
+                    <Icon.alert className="h-4 w-4 text-amber-500" />
+                    We need a bit more information
+                  </span>
+                }
+                description="Answering these helps us route and resolve your complaint faster."
+              />
+              <CardBody>
+                <ul className="flex flex-col gap-4">
+                  {clarifications.map((q) => (
+                    <li key={q.id} className="flex flex-col gap-2">
+                      <label
+                        htmlFor={`clar-${q.id}`}
+                        className="text-sm text-content"
                       >
-                        Submit
-                      </button>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            </div>
+                        {q.question}
+                      </label>
+                      <div className="flex gap-2">
+                        <Input
+                          id={`clar-${q.id}`}
+                          value={answers[q.id] ?? ""}
+                          onChange={(e) =>
+                            setAnswers((a) => ({ ...a, [q.id]: e.target.value }))
+                          }
+                          placeholder="Your answer"
+                        />
+                        <Button
+                          variant="secondary"
+                          onClick={() => submitAnswer(q.id)}
+                          loading={busyId === q.id}
+                          className="shrink-0"
+                        >
+                          Submit
+                        </Button>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </CardBody>
+            </Card>
           )}
 
-          <div className="rounded-lg border p-5">
-            <h3 className="mb-4 font-semibold">Status timeline</h3>
-            <Timeline entries={complaint.status_history} />
-          </div>
+          <Card>
+            <CardHeader title="Status timeline" />
+            <CardBody>
+              <Timeline entries={complaint.status_history} />
+            </CardBody>
+          </Card>
         </section>
       )}
-    </main>
+    </Container>
   );
 }
 
 export default function TrackPage() {
   return (
-    <Suspense fallback={<main className="mx-auto max-w-xl px-6 py-12">Loading…</main>}>
+    <Suspense
+      fallback={
+        <Container size="narrow">
+          <Skeleton className="h-40 w-full" />
+        </Container>
+      }
+    >
       <TrackInner />
     </Suspense>
   );

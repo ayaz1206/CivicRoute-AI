@@ -1,11 +1,13 @@
 import type { Recommendation } from "@/lib/api";
+import { Badge, type BadgeTone } from "@/components/ui/Badge";
+import { Icon } from "@/components/ui/Icon";
 
 type Severity = Recommendation["review_severity"];
 
-const STYLES: Record<Severity, string> = {
-  high_risk: "bg-red-100 text-red-800 border-red-300",
-  low_confidence: "bg-amber-100 text-amber-800 border-amber-300",
-  routine: "bg-gray-100 text-gray-700 border-gray-300",
+const TONES: Record<Severity, BadgeTone> = {
+  high_risk: "danger",
+  low_confidence: "warning",
+  routine: "neutral",
 };
 
 const LABELS: Record<Severity, string> = {
@@ -15,11 +17,11 @@ const LABELS: Record<Severity, string> = {
 };
 
 export function SeverityBadge({ severity }: { severity: Severity }) {
+  const icon =
+    severity === "routine" ? undefined : <Icon.alert className="h-3.5 w-3.5" />;
   return (
-    <span
-      className={`inline-block rounded-full border px-2 py-0.5 text-xs font-medium ${STYLES[severity]}`}
-    >
+    <Badge tone={TONES[severity]} icon={icon}>
       {LABELS[severity]}
-    </span>
+    </Badge>
   );
 }

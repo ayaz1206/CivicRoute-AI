@@ -1,64 +1,81 @@
 import type { TrendPoint } from "@/lib/api";
+import { Card, CardBody, CardHeader } from "@/components/ui/Card";
 
-/** Minimal SVG line chart for daily complaint volume. */
+/** SVG area/line chart for daily complaint volume. */
 export function TrendChart({ points }: { points: TrendPoint[] }) {
   const w = 600;
-  const h = 160;
-  const pad = 24;
+  const h = 180;
+  const pad = 28;
 
   if (points.length === 0) {
     return (
-      <div className="rounded-lg border p-5">
-        <h3 className="mb-4 font-semibold">Daily volume trend</h3>
-        <p className="text-sm opacity-60">No data.</p>
-      </div>
+      <Card>
+        <CardHeader title="Daily volume trend" />
+        <CardBody>
+          <p className="text-sm text-content-muted">No data.</p>
+        </CardBody>
+      </Card>
     );
   }
 
   const max = points.reduce((m, p) => Math.max(m, p.count), 0) || 1;
-  const stepX =
-    points.length > 1 ? (w - pad * 2) / (points.length - 1) : 0;
+  const stepX = points.length > 1 ? (w - pad * 2) / (points.length - 1) : 0;
   const scaleY = (c: number) => h - pad - (c / max) * (h - pad * 2);
+  const coords = points.map((p, i) => [pad + i * stepX, scaleY(p.count)] as const);
 
-  const path = points
-    .map((p, i) => `${i === 0 ? "M" : "L"} ${pad + i * stepX} ${scaleY(p.count)}`)
+  const line = coords
+    .map(([x, y], i) => `${i === 0 ? "M" : "L"} ${x} ${y}`)
     .join(" ");
+  // Closed area path under the line for a subtle fill.
+  const area =
+    `${line} L ${coords[coords.length - 1][0]} ${h - pad} ` +
+    `L ${coords[0][0]} ${h - pad} Z`;
 
   return (
-    <div className="rounded-lg border p-5">
-      <h3 className="mb-1 font-semibold">Daily volume trend</h3>
-      <p className="mb-3 text-xs opacity-60">
-        {points[0].date} → {points[points.length - 1].date} · peak {max}/day
-      </p>
-      <svg
-        viewBox={`0 0 ${w} ${h}`}
-        className="w-full"
-        role="img"
-        aria-label="Daily complaint volume trend"
-      >
-        <line
-          x1={pad}
-          y1={h - pad}
-          x2={w - pad}
-          y2={h - pad}
-          stroke="currentColor"
-          strokeOpacity={0.15}
-        />
-        <path d={path} fill="none" stroke="#3b82f6" strokeWidth={2} />
-        {points.map((p, i) => (
-          <circle
-            key={p.date}
-            cx={pad + i * stepX}
-            cy={scaleY(p.count)}
-            r={2.5}
-            fill="#3b82f6"
-          >
-            <title>
-              {p.date}: {p.count}
-            </title>
-          </circle>
-        ))}
-      </svg>
-    </div>
+    <Card>
+      <CardHeader
+        title="Daily volume trend"
+        description={`${points[0].date} → ${points[points.length - 1].date} · peak ${max}/day`}
+      />
+      <CardBody>
+        <svg
+          viewBox={`0 0 ${w} ${h}`}
+          className="w-full text-brand-500"
+          role="img"
+          aria-label={`Daily complaint volume trend; peak ${max} per day`}
+        >
+          <defs>
+            <linearGradient id="trend-fill" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="currentColor" stopOpacity="0.18" />
+              <stop offset="100%" stopColor="currentColor" stopOpacity="0" />
+            </linearGradient>
+          </defs>
+          <line
+            x1={pad}
+            y1={h - pad}
+            x2={w - pad}
+            y2={h - pad}
+            stroke="currentColor"
+            strokeOpacity={0.15}
+          />
+          <path d={area} fill="url(#trend-fill)" />
+          <path
+            d={line}
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2.5}
+            strokeLinejoin="round"
+            strokeLinecap="round"
+          />
+          {coords.map(([x, y], i) => (
+            <circle key={points[i].date} cx={x} cy={y} r={2.5} fill="currentColor">
+              <title>
+                {points[i].date}: {points[i].count}
+              </title>
+            </circle>
+          ))}
+        </svg>
+      </CardBody>
+    </Card>
   );
 }

@@ -2,65 +2,77 @@
 @tailwind components;
 @tailwind utilities;
 
+/*
+ * CivicRoute AI theme tokens.
+ * Values are space-separated RGB channels so Tailwind's <alpha-value> works
+ * (e.g. bg-surface/80). Light mode is the primary theme; .dark is a polished,
+ * navy-based dark mode (soft, never pure black).
+ */
 :root {
-  --background: #ffffff;
-  --foreground: #0a0a0a;
-  /* Form control surface — distinct enough from the page background to read. */
-  --control-bg: #ffffff;
-  --control-fg: #0a0a0a;
-  --control-border: #d4d4d4;
-  --control-placeholder: #6b7280;
+  --canvas: 247 248 250; /* #f7f8fa soft off-white page background */
+  --surface: 255 255 255; /* cards / panels */
+  --surface-muted: 243 244 246; /* subtle fills, table headers */
+  --border: 226 232 240; /* slate-200 */
+  --content: 15 23 42; /* slate-900 primary text */
+  --content-muted: 71 85 105; /* slate-600 */
+  --content-subtle: 100 116 139; /* slate-500 */
+
+  /* Form control tokens (kept for the base-layer rules below). */
+  --control-bg: 255 255 255;
+  --control-fg: 15 23 42;
+  --control-border: 203 213 225;
+  --control-placeholder: 100 116 139;
+  --ring: 99 102 241; /* brand-500 */
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-    --control-bg: #1a1a1a;
-    --control-fg: #ededed;
-    --control-border: #3a3a3a;
-    --control-placeholder: #9ca3af;
-  }
+.dark {
+  --canvas: 11 17 32; /* navy-950 */
+  --surface: 23 32 51; /* navy-800 */
+  --surface-muted: 30 41 59; /* navy-700 */
+  --border: 51 65 85; /* slate-700 */
+  --content: 237 240 246;
+  --content-muted: 148 163 184; /* slate-400 */
+  --content-subtle: 100 116 139;
+
+  --control-bg: 30 41 59;
+  --control-fg: 237 240 246;
+  --control-border: 71 85 105;
+  --control-placeholder: 148 163 184;
 }
 
 body {
-  color: var(--foreground);
-  background: var(--background);
+  color: rgb(var(--content));
+  background: rgb(var(--canvas));
 }
 
-/*
- * Form controls must not inherit the body foreground color onto a white native
- * background (which made typed text invisible in dark mode). Drive their colors
- * from the theme variables so text, placeholders, focus and disabled states are
- * readable in both light and dark modes.
- */
 @layer base {
+  /* Form controls read from the theme tokens so text, placeholders, focus and
+     disabled states are legible in both light and dark modes. */
   input,
   textarea,
   select {
-    background-color: var(--control-bg);
-    color: var(--control-fg);
-    border-color: var(--control-border);
+    background-color: rgb(var(--control-bg));
+    color: rgb(var(--control-fg));
+    border-color: rgb(var(--control-border));
   }
 
   input::placeholder,
   textarea::placeholder {
-    color: var(--control-placeholder);
-    opacity: 1; /* Firefox lowers placeholder opacity by default */
+    color: rgb(var(--control-placeholder));
+    opacity: 1;
   }
 
-  /* Native dropdown option list (where supported). */
   option {
-    background-color: var(--control-bg);
-    color: var(--control-fg);
+    background-color: rgb(var(--control-bg));
+    color: rgb(var(--control-fg));
   }
 
-  input:focus,
-  textarea:focus,
-  select:focus {
+  input:focus-visible,
+  textarea:focus-visible,
+  select:focus-visible {
     outline: none;
-    border-color: #3b82f6; /* blue-500, matches existing accent buttons */
-    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.35);
+    border-color: rgb(var(--ring));
+    box-shadow: 0 0 0 3px rgb(var(--ring) / 0.35);
   }
 
   input:disabled,
@@ -68,5 +80,49 @@ body {
   select:disabled {
     opacity: 0.6;
     cursor: not-allowed;
+  }
+
+  /* Visible focus for keyboard users on all interactive elements. */
+  a:focus-visible,
+  button:focus-visible,
+  [role="button"]:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px rgb(var(--ring) / 0.35);
+    border-radius: 0.5rem;
+  }
+}
+
+/* Reusable skeleton shimmer. */
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  background-color: rgb(var(--surface-muted));
+}
+.skeleton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgb(var(--content) / 0.06),
+    transparent
+  );
+  animation: shimmer 1.4s infinite;
+}
+
+/* Respect reduced-motion: disable non-essential animation/transition. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+  .skeleton::after {
+    animation: none;
   }
 }

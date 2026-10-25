@@ -8,6 +8,12 @@ import {
   type City,
   type SubmitResult,
 } from "@/lib/api";
+import { Container, PageHeader } from "@/components/ui/Page";
+import { Card, CardBody } from "@/components/ui/Card";
+import { Field, Input, Textarea, Select } from "@/components/ui/Field";
+import { Button } from "@/components/ui/Button";
+import { Alert } from "@/components/ui/Alert";
+import { Icon } from "@/components/ui/Icon";
 
 export default function SubmitPage() {
   const [cities, setCities] = useState<City[]>([]);
@@ -20,6 +26,7 @@ export default function SubmitPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<SubmitResult | null>(null);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     listCities()
@@ -55,138 +62,184 @@ export default function SubmitPage() {
     }
   }
 
+  // ---- Confirmation state ----
   if (result) {
     return (
-      <main className="mx-auto max-w-xl px-6 py-12">
-        <div className="rounded-lg border border-green-300 bg-green-50 p-6">
-          <h1 className="text-xl font-bold text-green-800">Complaint submitted</h1>
-          <p className="mt-2 text-sm text-green-900">
-            Save your tracking code to follow progress:
-          </p>
-          <p className="my-4 text-center text-2xl font-mono font-bold tracking-wider">
-            {result.tracking_code}
-          </p>
-          <div className="flex gap-3 text-sm">
-            <Link
-              href={`/track?code=${result.tracking_code}`}
-              className="rounded bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
-            >
-              Track this complaint
-            </Link>
-            <button
-              onClick={() => {
-                setResult(null);
-                setTitle("");
-                setDescription("");
-                setLocation("");
-              }}
-              className="rounded border px-4 py-2 hover:bg-gray-50"
-            >
-              Submit another
-            </button>
-          </div>
-        </div>
-      </main>
+      <Container size="narrow">
+        <Card>
+          <CardBody className="flex flex-col items-center gap-4 py-10 text-center">
+            <span className="flex h-14 w-14 items-center justify-center rounded-full bg-emerald-100 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400">
+              <Icon.check className="h-7 w-7" />
+            </span>
+            <div>
+              <h1 className="text-xl font-bold text-content">
+                Complaint submitted
+              </h1>
+              <p className="mt-1 text-sm text-content-muted">
+                Save your tracking code to follow progress.
+              </p>
+            </div>
+
+            <div className="w-full rounded-xl border border-border bg-surface-muted p-4">
+              <p className="text-xs font-medium uppercase tracking-wide text-content-subtle">
+                Tracking code
+              </p>
+              <div className="mt-1 flex items-center justify-center gap-2">
+                <span className="font-mono text-2xl font-bold tracking-wider text-content">
+                  {result.tracking_code}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    navigator.clipboard
+                      ?.writeText(result.tracking_code)
+                      .then(() => setCopied(true));
+                  }}
+                  className="rounded-md border border-border px-2 py-1 text-xs text-content-muted hover:bg-surface"
+                  aria-label="Copy tracking code"
+                >
+                  {copied ? "Copied" : "Copy"}
+                </button>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap justify-center gap-3">
+              <Link href={`/track?code=${result.tracking_code}`}>
+                <Button>
+                  <Icon.search className="h-4 w-4" />
+                  Track this complaint
+                </Button>
+              </Link>
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  setResult(null);
+                  setCopied(false);
+                  setTitle("");
+                  setDescription("");
+                  setLocation("");
+                }}
+              >
+                Submit another
+              </Button>
+            </div>
+          </CardBody>
+        </Card>
+      </Container>
     );
   }
 
+  // ---- Form state ----
   return (
-    <main className="mx-auto max-w-xl px-6 py-12">
-      <h1 className="text-2xl font-bold">Submit a complaint</h1>
-      <p className="mt-1 text-sm opacity-70">
-        Report an issue. You&apos;ll receive a tracking code to follow progress.
-      </p>
+    <Container size="narrow" className="flex flex-col gap-6">
+      <PageHeader
+        eyebrow="Residents"
+        title="Submit a complaint"
+        description="Report a non-emergency issue. You'll receive a tracking code to follow its progress."
+      />
 
-      {error && (
-        <div className="mt-4 rounded border border-red-300 bg-red-50 p-3 text-sm text-red-800">
-          {error}
-        </div>
-      )}
+      {error && <Alert tone="error">{error}</Alert>}
 
-      <form onSubmit={onSubmit} className="mt-6 flex flex-col gap-4">
-        <label className="flex flex-col gap-1 text-sm">
-          City
-          <select
-            value={cityId}
-            onChange={(e) => setCityId(Number(e.target.value))}
-            className="rounded border px-3 py-2"
-            required
-          >
-            {cities.length === 0 && <option value="">Loading…</option>}
-            {cities.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
-          </select>
-        </label>
+      <Card>
+        <CardBody>
+          <form onSubmit={onSubmit} className="flex flex-col gap-5" noValidate>
+            <Field label="City" htmlFor="city" required>
+              <Select
+                id="city"
+                value={cityId}
+                onChange={(e) => setCityId(Number(e.target.value))}
+                required
+              >
+                {cities.length === 0 && <option value="">Loading…</option>}
+                {cities.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </Select>
+            </Field>
 
-        <label className="flex flex-col gap-1 text-sm">
-          Title
-          <input
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            minLength={3}
-            maxLength={200}
-            required
-            placeholder="e.g. Large pothole on Main St"
-            className="rounded border px-3 py-2"
-          />
-        </label>
+            <Field
+              label="Title"
+              htmlFor="title"
+              required
+              hint="A short summary — at least 3 characters."
+            >
+              <Input
+                id="title"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                minLength={3}
+                maxLength={200}
+                required
+                placeholder="e.g. Large pothole on Main St"
+              />
+            </Field>
 
-        <label className="flex flex-col gap-1 text-sm">
-          Description
-          <textarea
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            minLength={10}
-            required
-            rows={4}
-            placeholder="Describe the issue, including any safety concerns."
-            className="rounded border px-3 py-2"
-          />
-        </label>
+            <Field
+              label="Description"
+              htmlFor="description"
+              required
+              hint="Describe the issue and any safety concerns — at least 10 characters."
+            >
+              <Textarea
+                id="description"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                minLength={10}
+                required
+                rows={4}
+                placeholder="Describe what's wrong, where, and how it affects people."
+              />
+            </Field>
 
-        <label className="flex flex-col gap-1 text-sm">
-          Location (optional)
-          <input
-            value={location}
-            onChange={(e) => setLocation(e.target.value)}
-            maxLength={300}
-            placeholder="e.g. Main St & 1st Ave"
-            className="rounded border px-3 py-2"
-          />
-        </label>
+            <Field
+              label="Location"
+              htmlFor="location"
+              hint="Optional, but helps us route and de-duplicate accurately."
+            >
+              <Input
+                id="location"
+                value={location}
+                onChange={(e) => setLocation(e.target.value)}
+                maxLength={300}
+                placeholder="e.g. Main St & 1st Ave"
+              />
+            </Field>
 
-        <div className="grid grid-cols-2 gap-4">
-          <label className="flex flex-col gap-1 text-sm">
-            Your name (optional)
-            <input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              maxLength={120}
-              className="rounded border px-3 py-2"
-            />
-          </label>
-          <label className="flex flex-col gap-1 text-sm">
-            Email (optional)
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="rounded border px-3 py-2"
-            />
-          </label>
-        </div>
+            <div className="grid gap-5 sm:grid-cols-2">
+              <Field label="Your name" htmlFor="name" hint="Optional">
+                <Input
+                  id="name"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  maxLength={120}
+                  autoComplete="name"
+                />
+              </Field>
+              <Field label="Email" htmlFor="email" hint="Optional">
+                <Input
+                  id="email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  autoComplete="email"
+                  placeholder="you@example.com"
+                />
+              </Field>
+            </div>
 
-        <button
-          type="submit"
-          disabled={submitting}
-          className="mt-2 rounded bg-blue-600 px-4 py-2 font-medium text-white hover:bg-blue-700 disabled:opacity-50"
-        >
-          {submitting ? "Submitting…" : "Submit complaint"}
-        </button>
-      </form>
-    </main>
+            <div className="flex items-center justify-between gap-3 border-t border-border pt-4">
+              <p className="text-xs text-content-subtle">
+                Your report is reviewed by city staff before any action.
+              </p>
+              <Button type="submit" loading={submitting}>
+                {submitting ? "Submitting…" : "Submit complaint"}
+              </Button>
+            </div>
+          </form>
+        </CardBody>
+      </Card>
+    </Container>
   );
 }
